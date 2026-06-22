@@ -9,6 +9,7 @@ import {
   Users,
 } from "lucide-react";
 import {
+  canAddPlayerToLine,
   clearState,
   id,
   lineErrors as getLineErrors,
@@ -60,6 +61,7 @@ function App() {
   const currentPossession = game?.possession ?? null;
   const requiredMmpCount = game?.requiredMmpCount ?? null;
   const requiredFmpCount = game?.requiredFmpCount ?? null;
+  const currentLineMmpLimit = requiredMmpCount ?? draftSettings.startingMmpCount;
   const lineErrors =
     requiredMmpCount === null
       ? ["Start game"]
@@ -144,8 +146,15 @@ function App() {
         return current.filter((id) => id !== player.id);
       }
 
-      if (current.length >= 7) {
-        return [...current.slice(1), player.id];
+      if (
+        !canAddPlayerToLine(
+          state.players,
+          current,
+          player,
+          currentLineMmpLimit,
+        )
+      ) {
+        return current;
       }
 
       return [...current, player.id];
@@ -429,6 +438,14 @@ function App() {
               selectedLineIds={selectedLineIds}
               suggestedLineIds={suggestedLine}
               summaries={summaries}
+              canAddPlayer={(player) =>
+                canAddPlayerToLine(
+                  state.players,
+                  selectedLineIds,
+                  player,
+                  currentLineMmpLimit,
+                )
+              }
               onToggle={togglePlayerForLine}
             />
             <PlayerGroup
@@ -439,6 +456,14 @@ function App() {
               selectedLineIds={selectedLineIds}
               suggestedLineIds={suggestedLine}
               summaries={summaries}
+              canAddPlayer={(player) =>
+                canAddPlayerToLine(
+                  state.players,
+                  selectedLineIds,
+                  player,
+                  currentLineMmpLimit,
+                )
+              }
               onToggle={togglePlayerForLine}
             />
           </div>
@@ -575,6 +600,7 @@ type PlayerGroupProps = {
   selectedLineIds: string[];
   suggestedLineIds: string[];
   summaries: ReturnType<typeof summarizePlayers>;
+  canAddPlayer: (player: Player) => boolean;
   onToggle: (player: Player) => void;
 };
 
@@ -584,6 +610,7 @@ function PlayerGroup({
   selectedLineIds,
   suggestedLineIds,
   summaries,
+  canAddPlayer,
   onToggle,
 }: PlayerGroupProps) {
   const summaryById = new Map(
@@ -601,6 +628,8 @@ function PlayerGroup({
           const summary = summaryById.get(player.id);
           const selected = selectedLineIds.includes(player.id);
           const suggested = suggestedLineIds.includes(player.id);
+          const blockedByLineLimit =
+            player.active && !selected && !canAddPlayer(player);
 
           return (
             <button
@@ -609,11 +638,13 @@ function PlayerGroup({
                 selected && "selected",
                 suggested && !selected && "suggested",
                 !player.active && "inactive",
+                blockedByLineLimit && "lineLimitReached",
               )}
               key={player.id}
               type="button"
               onClick={() => onToggle(player)}
-              disabled={!player.active}
+              disabled={!player.active || blockedByLineLimit}
+              title={blockedByLineLimit ? `${title} limit reached` : undefined}
             >
               <span>{player.name}</span>
               <small>

@@ -441,6 +441,10 @@ select {
   background: #fff5d7;
 }
 
+.playerButton.lineLimitReached {
+  border-style: dashed;
+}
+
 .playerButton.inactive {
   color: #8a908d;
   background: #efede8;

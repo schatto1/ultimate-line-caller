@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canAddPlayerToLine,
   lineErrors,
   newPoint,
   pointContext,
@@ -82,6 +83,43 @@ describe("model", () => {
     ).toContain("F4 is inactive");
   });
 
+  it("blocks adding players after their category limit is reached", () => {
+    const selectedPlayer = players.find((player) => player.id === "m1")!;
+    const mmpPlayer = players.find((player) => player.id === "m4")!;
+    const fmpPlayer = players.find((player) => player.id === "f3")!;
+    const inactivePlayer = players.find((player) => player.id === "f4")!;
+    const extraFmpPlayer: Player = {
+      id: "f5",
+      name: "F5",
+      genderCategory: "FMP",
+      active: true,
+    };
+
+    expect(
+      canAddPlayerToLine(players, ["m1", "m2", "m3", "f1"], mmpPlayer, 3),
+    ).toBe(false);
+    expect(
+      canAddPlayerToLine(players, ["m1", "m2", "m3", "f1"], fmpPlayer, 3),
+    ).toBe(true);
+    expect(
+      canAddPlayerToLine(players, ["m1", "m2", "f1"], mmpPlayer, 3),
+    ).toBe(true);
+    expect(
+      canAddPlayerToLine(players, ["m1", "m2", "f1"], selectedPlayer, 3),
+    ).toBe(false);
+    expect(
+      canAddPlayerToLine(players, ["m1", "m2", "f1"], inactivePlayer, 3),
+    ).toBe(false);
+    expect(
+      canAddPlayerToLine(
+        [...players, extraFmpPlayer],
+        ["m1", "m2", "m3", "m4", "f1", "f2", "f3"],
+        extraFmpPlayer,
+        4,
+      ),
+    ).toBe(false);
+  });
+
   it("summarizes player totals and O/D splits", () => {
     const summary = summaries(players, [
       point(1, "us", "offense"),
@@ -136,4 +174,3 @@ describe("model", () => {
     });
   });
 });
-

@@ -161,25 +161,56 @@ export function lineErrors(
   linePlayerIds: string[],
   requiredMmpCount: 3 | 4,
 ) {
-  const playersById = new Map(players.map((player) => [player.id, player]));
-  const selectedPlayers = linePlayerIds
-    .map((playerId) => playersById.get(playerId))
-    .filter(Boolean) as Player[];
-  const mmpCount = selectedPlayers.filter(
-    (player) => player.genderCategory === "MMP",
-  ).length;
-  const fmpCount = selectedPlayers.filter(
-    (player) => player.genderCategory === "FMP",
-  ).length;
+  const selectedPlayers = linePlayers(players, linePlayerIds);
+  const counts = lineCounts(players, linePlayerIds);
   const inactivePlayer = selectedPlayers.find((player) => !player.active);
   const errors: string[] = [];
 
   if (linePlayerIds.length !== 7) errors.push(`Selected ${linePlayerIds.length}/7`);
-  if (mmpCount !== requiredMmpCount) errors.push(`MMP ${mmpCount}/${requiredMmpCount}`);
-  if (fmpCount !== 7 - requiredMmpCount) errors.push(`FMP ${fmpCount}/${7 - requiredMmpCount}`);
+  if (counts.MMP !== requiredMmpCount) errors.push(`MMP ${counts.MMP}/${requiredMmpCount}`);
+  if (counts.FMP !== 7 - requiredMmpCount) errors.push(`FMP ${counts.FMP}/${7 - requiredMmpCount}`);
   if (inactivePlayer) errors.push(`${inactivePlayer.name} is inactive`);
 
   return errors;
+}
+
+export function linePlayers(players: Player[], linePlayerIds: string[]) {
+  const playersById = new Map(players.map((player) => [player.id, player]));
+
+  return linePlayerIds
+    .map((playerId) => playersById.get(playerId))
+    .filter(Boolean) as Player[];
+}
+
+export function lineCounts(
+  players: Player[],
+  linePlayerIds: string[],
+): Record<GenderCategory, number> {
+  return linePlayers(players, linePlayerIds).reduce(
+    (counts, player) => {
+      counts[player.genderCategory] += 1;
+      return counts;
+    },
+    { MMP: 0, FMP: 0 },
+  );
+}
+
+export function lineLimit(category: GenderCategory, requiredMmpCount: 3 | 4) {
+  return category === "MMP" ? requiredMmpCount : 7 - requiredMmpCount;
+}
+
+export function canAddPlayerToLine(
+  players: Player[],
+  linePlayerIds: string[],
+  player: Player,
+  requiredMmpCount: 3 | 4,
+) {
+  if (!player.active || linePlayerIds.includes(player.id) || linePlayerIds.length >= 7) {
+    return false;
+  }
+
+  return lineCounts(players, linePlayerIds)[player.genderCategory] <
+    lineLimit(player.genderCategory, requiredMmpCount);
 }
 
 export function suggestedLine(
@@ -220,4 +251,3 @@ export function newPoint(
     createdAt: new Date().toISOString(),
   };
 }
-
