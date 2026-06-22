@@ -9,21 +9,17 @@ import {
   Users,
 } from "lucide-react";
 import {
-  clearSavedState,
+  clearState,
+  id,
+  lineErrors as getLineErrors,
   loadState,
+  newPoint,
+  pointContext,
+  sampleRoster,
   saveState,
-} from "./storage";
-import {
-  createId,
-  createPointLogEntry,
-  getCurrentPossession,
-  getPointNumber,
-  getRequiredMmpCount,
-  getScore,
-  getSuggestedLine,
-  summarizePlayers,
-  validateLine,
-} from "./domain";
+  suggestedLine as getSuggestedLine,
+  summaries as summarizePlayers,
+} from "./model";
 import type {
   AppState,
   GameSettings,
@@ -31,32 +27,7 @@ import type {
   Player,
   PointOutcome,
   Possession,
-} from "./types";
-
-const samplePlayers: Array<Pick<Player, "name" | "genderCategory">> = [
-  { name: "MMP 1", genderCategory: "MMP" },
-  { name: "MMP 2", genderCategory: "MMP" },
-  { name: "MMP 3", genderCategory: "MMP" },
-  { name: "MMP 4", genderCategory: "MMP" },
-  { name: "MMP 5", genderCategory: "MMP" },
-  { name: "MMP 6", genderCategory: "MMP" },
-  { name: "MMP 7", genderCategory: "MMP" },
-  { name: "FMP 1", genderCategory: "FMP" },
-  { name: "FMP 2", genderCategory: "FMP" },
-  { name: "FMP 3", genderCategory: "FMP" },
-  { name: "FMP 4", genderCategory: "FMP" },
-  { name: "FMP 5", genderCategory: "FMP" },
-  { name: "FMP 6", genderCategory: "FMP" },
-  { name: "FMP 7", genderCategory: "FMP" },
-];
-
-function createSampleRoster(): Player[] {
-  return samplePlayers.map((player) => ({
-    ...player,
-    id: createId("player"),
-    active: true,
-  }));
-}
+} from "./model";
 
 function classNames(...names: Array<string | false | null | undefined>) {
   return names.filter(Boolean).join(" ");
@@ -81,19 +52,18 @@ function App() {
     () => summarizePlayers(state.players, state.pointLog),
     [state.players, state.pointLog],
   );
-  const score = useMemo(() => getScore(state.pointLog), [state.pointLog]);
-  const pointNumber = getPointNumber(state.pointLog);
-  const currentPossession = state.gameSettings
-    ? getCurrentPossession(state.gameSettings, state.pointLog)
+  const game = state.gameSettings
+    ? pointContext(state.gameSettings, state.pointLog)
     : null;
-  const requiredMmpCount = state.gameSettings
-    ? getRequiredMmpCount(pointNumber, state.gameSettings.startingMmpCount)
-    : null;
-  const requiredFmpCount = requiredMmpCount ? 7 - requiredMmpCount : null;
+  const score = game?.score ?? { us: 0, opponent: 0 };
+  const pointNumber = game?.pointNumber ?? state.pointLog.length + 1;
+  const currentPossession = game?.possession ?? null;
+  const requiredMmpCount = game?.requiredMmpCount ?? null;
+  const requiredFmpCount = game?.requiredFmpCount ?? null;
   const lineErrors =
     requiredMmpCount === null
       ? ["Start game"]
-      : validateLine(state.players, selectedLineIds, requiredMmpCount);
+      : getLineErrors(state.players, selectedLineIds, requiredMmpCount);
   const canLogPoint = state.gameSettings !== null && lineErrors.length === 0;
   const suggestedLine = requiredMmpCount
     ? getSuggestedLine(state.players, state.pointLog, requiredMmpCount)
@@ -115,7 +85,7 @@ function App() {
       players: [
         ...current.players,
         {
-          id: createId("player"),
+          id: id("player"),
           name,
           genderCategory: newPlayerCategory,
           active: true,
@@ -187,12 +157,12 @@ function App() {
       return;
     }
 
-    const point = createPointLogEntry({
-      gameSettings: state.gameSettings,
-      pointLog: state.pointLog,
-      linePlayerIds: selectedLineIds,
+    const point = newPoint(
+      state.gameSettings,
+      state.pointLog,
+      selectedLineIds,
       outcome,
-    });
+    );
 
     setState((current) => ({
       ...current,
@@ -211,14 +181,14 @@ function App() {
   function loadSampleRoster() {
     setState((current) => ({
       ...current,
-      players: createSampleRoster(),
+      players: sampleRoster(),
       pointLog: [],
     }));
     setSelectedLineIds([]);
   }
 
   function resetEverything() {
-    clearSavedState();
+    clearState();
     setState({ players: [], gameSettings: null, pointLog: [] });
     setSelectedLineIds([]);
   }
@@ -663,4 +633,3 @@ function possessionLabel(possession: Possession) {
 }
 
 export default App;
-

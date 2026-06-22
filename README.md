@@ -16,7 +16,11 @@ This directory contains the first sideline prototype:
 
 ## Project Contents
 
+- `src/App.tsx`: React UI and event handlers
+- `src/model.ts`: shared types, local storage, and game rules
+- `src/model.test.ts`: core behavior tests
 - `docs/mvp-plan.md`: implementation-ready plan for the first prototype
+- `docs/architecture.md`: short note on the simplified app structure
 - `docs/spreadsheet-analysis.md`: notes from the current spreadsheet structure
 - `reference/ultimate-lines-sheet.xlsx`: exported copy of the current Google Sheet
 - `tools/inspect-ultimate-lines-xml.py`: utility used to inspect the exported workbook
@@ -28,6 +32,9 @@ This directory contains the first sideline prototype:
 - Local browser storage only
 - Vitest for calculation/state tests
 - iPad testing through Safari on the same Wi-Fi as the dev machine
+
+Installed packages are not app source. `node_modules/` is ignored for future
+installs.
 
 ## Next Build Step
 

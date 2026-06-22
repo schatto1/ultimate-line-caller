@@ -14,6 +14,13 @@ Stack:
 - Vitest for logic tests
 - Local dev server from the Mac, opened on iPad over same Wi-Fi
 
+Current simplified source layout:
+
+- `src/App.tsx`: React UI and handlers
+- `src/model.ts`: types, local storage, and game rules
+- `src/model.test.ts`: behavior tests
+- `src/styles.css`: responsive iPad-friendly layout
+
 ## Key Changes
 
 - Create a standalone app at `/Users/sumon/code/ultimate-line-caller`.
@@ -111,9 +118,7 @@ Local setup on the Mac:
 
 ```bash
 cd /Users/sumon/code/ultimate-line-caller
-npm create vite@latest . -- --template react-ts
 npm install
-npm install -D vitest
 npm run dev -- --host 0.0.0.0
 ```
 
@@ -138,4 +143,3 @@ No Xcode, Electron, App Store account, backend, database, or Google API setup is
 - Mixed ratio alternates every point between `4/3` and `3/4`.
 - One active game exists at a time.
 - Local browser storage is acceptable for the prototype.
-
