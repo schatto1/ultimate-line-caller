@@ -4,6 +4,7 @@ import {
   lineErrors,
   newPoint,
   pointContext,
+  requiredMmpCountForPoint,
   summaries,
 } from "./model";
 import type { GameSettings, Player, PointLogEntry } from "./model";
@@ -40,13 +41,30 @@ function point(
     pointNumber,
     linePlayerIds,
     startingPossession,
-    requiredMmpCount: pointNumber % 2 === 1 ? 4 : 3,
+    requiredMmpCount: requiredMmpCountForPoint(
+      pointNumber,
+      settings.startingMmpCount,
+    ),
     outcome,
     createdAt: "2026-06-17T00:00:00.000Z",
   };
 }
 
 describe("model", () => {
+  it("uses the USAU ABBA ratio pattern from the starting ratio", () => {
+    expect(
+      [1, 2, 3, 4, 5, 6, 7, 8].map((pointNumber) =>
+        requiredMmpCountForPoint(pointNumber, 4),
+      ),
+    ).toEqual([4, 3, 3, 4, 4, 3, 3, 4]);
+
+    expect(
+      [1, 2, 3, 4, 5, 6, 7, 8].map((pointNumber) =>
+        requiredMmpCountForPoint(pointNumber, 3),
+      ),
+    ).toEqual([3, 4, 4, 3, 3, 4, 4, 3]);
+  });
+
   it("derives score, next possession, point number, and ratio together", () => {
     expect(pointContext(settings, [])).toMatchObject({
       pointNumber: 1,
@@ -64,6 +82,31 @@ describe("model", () => {
       requiredMmpCount: 3,
       requiredFmpCount: 4,
       score: { us: 1, opponent: 0 },
+    });
+
+    expect(
+      pointContext(settings, [
+        point(1, "us", "offense"),
+        point(2, "opponent", "defense"),
+      ]),
+    ).toMatchObject({
+      pointNumber: 3,
+      requiredMmpCount: 3,
+      requiredFmpCount: 4,
+      score: { us: 1, opponent: 1 },
+    });
+
+    expect(
+      pointContext(settings, [
+        point(1, "us", "offense"),
+        point(2, "opponent", "defense"),
+        point(3, "us", "offense"),
+      ]),
+    ).toMatchObject({
+      pointNumber: 4,
+      requiredMmpCount: 4,
+      requiredFmpCount: 3,
+      score: { us: 2, opponent: 1 },
     });
   });
 

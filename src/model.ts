@@ -94,18 +94,30 @@ export function clearState() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
+export function oppositeMmpCount(count: 3 | 4): 3 | 4 {
+  return count === 4 ? 3 : 4;
+}
+
+export function requiredMmpCountForPoint(
+  pointNumber: number,
+  startingMmpCount: 3 | 4,
+): 3 | 4 {
+  const cyclePosition = (pointNumber - 1) % 4;
+  const usesStartingRatio = cyclePosition === 0 || cyclePosition === 3;
+
+  return usesStartingRatio ? startingMmpCount : oppositeMmpCount(startingMmpCount);
+}
+
 export function pointContext(
   gameSettings: GameSettings,
   pointLog: PointLogEntry[],
 ) {
   const pointNumber = pointLog.length + 1;
   const lastPoint = pointLog.at(-1);
-  const requiredMmpCount =
-    pointNumber % 2 === 1
-      ? gameSettings.startingMmpCount
-      : gameSettings.startingMmpCount === 4
-        ? 3
-        : 4;
+  const requiredMmpCount = requiredMmpCountForPoint(
+    pointNumber,
+    gameSettings.startingMmpCount,
+  );
 
   return {
     pointNumber,
