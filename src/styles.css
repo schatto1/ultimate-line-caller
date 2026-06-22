@@ -311,9 +311,15 @@ select {
 
 .lineActions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 14px;
   border-bottom: 1px solid #ebe5d7;
+}
+
+.lineActions .primaryButton,
+.lineActions .secondaryButton {
+  flex: 1 1 150px;
 }
 
 .lineSummary {

@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Check,
   ListRestart,
+  Lock,
   Plus,
   RotateCcw,
   Save,
   Trash2,
+  Unlock,
   Users,
 } from "lucide-react";
 import {
@@ -44,6 +46,7 @@ function App() {
     startingMmpCount: 4,
   });
   const [selectedLineIds, setSelectedLineIds] = useState<string[]>([]);
+  const [lockedLineIds, setLockedLineIds] = useState<string[]>([]);
 
   useEffect(() => {
     saveState(state);
@@ -66,11 +69,23 @@ function App() {
     requiredMmpCount === null
       ? ["Start game"]
       : getLineErrors(state.players, selectedLineIds, requiredMmpCount);
-  const canLogPoint = state.gameSettings !== null && lineErrors.length === 0;
+  const lockedLineErrors =
+    requiredMmpCount === null
+      ? ["Start game"]
+      : getLineErrors(state.players, lockedLineIds, requiredMmpCount);
+  const lineLocked = lockedLineIds.length > 0;
+  const canLockLine =
+    state.gameSettings !== null && !lineLocked && lineErrors.length === 0;
+  const canLogPoint =
+    state.gameSettings !== null && lineLocked && lockedLineErrors.length === 0;
+  const displayedLineErrors = lineLocked ? lockedLineErrors : lineErrors;
   const suggestedLine = requiredMmpCount
     ? getSuggestedLine(state.players, state.pointLog, requiredMmpCount)
     : [];
   const selectedLine = selectedLineIds
+    .map((id) => state.players.find((player) => player.id === id))
+    .filter(Boolean) as Player[];
+  const lockedLine = lockedLineIds
     .map((id) => state.players.find((player) => player.id === id))
     .filter(Boolean) as Player[];
   const activePlayerCount = state.players.filter((player) => player.active).length;
@@ -108,6 +123,7 @@ function App() {
 
   function deletePlayer(id: string) {
     setSelectedLineIds((current) => current.filter((playerId) => playerId !== id));
+    setLockedLineIds((current) => current.filter((playerId) => playerId !== id));
     setState((current) => ({
       ...current,
       players: current.players.filter((player) => player.id !== id),
@@ -119,12 +135,17 @@ function App() {
   }
 
   function startGame() {
+    if (state.gameSettings !== null) {
+      return;
+    }
+
     setState((current) => ({
       ...current,
       gameSettings: draftSettings,
       pointLog: [],
     }));
     setSelectedLineIds([]);
+    setLockedLineIds([]);
   }
 
   function resetGame() {
@@ -134,10 +155,11 @@ function App() {
       gameSettings: null,
     }));
     setSelectedLineIds([]);
+    setLockedLineIds([]);
   }
 
   function togglePlayerForLine(player: Player) {
-    if (!player.active) {
+    if (!state.gameSettings || lineLocked || !player.active) {
       return;
     }
 
@@ -161,6 +183,18 @@ function App() {
     });
   }
 
+  function lockLineForPoint() {
+    if (!canLockLine) {
+      return;
+    }
+
+    setLockedLineIds([...selectedLineIds]);
+  }
+
+  function unlockLineForPoint() {
+    setLockedLineIds([]);
+  }
+
   function logPoint(outcome: PointOutcome) {
     if (!state.gameSettings || !canLogPoint) {
       return;
@@ -169,7 +203,7 @@ function App() {
     const point = newPoint(
       state.gameSettings,
       state.pointLog,
-      selectedLineIds,
+      lockedLineIds,
       outcome,
     );
 
@@ -178,6 +212,7 @@ function App() {
       pointLog: [...current.pointLog, point],
     }));
     setSelectedLineIds([]);
+    setLockedLineIds([]);
   }
 
   function undoLastPoint() {
@@ -194,12 +229,14 @@ function App() {
       pointLog: [],
     }));
     setSelectedLineIds([]);
+    setLockedLineIds([]);
   }
 
   function resetEverything() {
     clearState();
     setState({ players: [], gameSettings: null, pointLog: [] });
     setSelectedLineIds([]);
+    setLockedLineIds([]);
   }
 
   return (
@@ -339,7 +376,7 @@ function App() {
 
           <div className="setupGrid">
             <div>
-              <p className="sectionLabel">Start</p>
+              <p className="sectionLabel">Start O/D</p>
               <Segmented
                 value={draftSettings.startingPossession}
                 options={[
@@ -352,11 +389,11 @@ function App() {
                     startingPossession: value as Possession,
                   }))
                 }
-                disabled={state.pointLog.length > 0}
+                disabled={state.gameSettings !== null}
               />
             </div>
             <div>
-              <p className="sectionLabel">Point 1</p>
+              <p className="sectionLabel">Point 1 Ratio</p>
               <Segmented
                 value={String(draftSettings.startingMmpCount)}
                 options={[
@@ -369,17 +406,17 @@ function App() {
                     startingMmpCount: Number(value) as 3 | 4,
                   }))
                 }
-                disabled={state.pointLog.length > 0}
+                disabled={state.gameSettings !== null}
               />
             </div>
             <button
               className="primaryButton"
               type="button"
               onClick={startGame}
-              disabled={state.pointLog.length > 0}
+              disabled={state.gameSettings !== null}
             >
               <Save size={18} />
-              Start
+              Start Game
             </button>
           </div>
 
@@ -388,7 +425,7 @@ function App() {
               className="secondaryButton"
               type="button"
               onClick={() => setSelectedLineIds(suggestedLine)}
-              disabled={!requiredMmpCount || suggestedLine.length < 7}
+              disabled={!requiredMmpCount || lineLocked || suggestedLine.length < 7}
             >
               <Check size={18} />
               Fill Suggested
@@ -397,19 +434,41 @@ function App() {
               className="secondaryButton"
               type="button"
               onClick={() => setSelectedLineIds([])}
-              disabled={selectedLineIds.length === 0}
+              disabled={lineLocked || selectedLineIds.length === 0}
             >
               Clear Line
             </button>
+            {lineLocked ? (
+              <button
+                className="secondaryButton"
+                type="button"
+                onClick={unlockLineForPoint}
+              >
+                <Unlock size={18} />
+                Unlock Line
+              </button>
+            ) : (
+              <button
+                className="primaryButton"
+                type="button"
+                onClick={lockLineForPoint}
+                disabled={!canLockLine}
+              >
+                <Lock size={18} />
+                Lock Line For Point
+              </button>
+            )}
           </div>
 
           <div className="lineSummary">
-            <p className="sectionLabel">Current Line</p>
+            <p className="sectionLabel">
+              {lineLocked ? `Locked Line For P${pointNumber}` : "Draft Line"}
+            </p>
             <div className="selectedLine">
-              {selectedLine.length === 0 ? (
+              {(lineLocked ? lockedLine : selectedLine).length === 0 ? (
                 <span className="emptyLine">No players selected</span>
               ) : (
-                selectedLine.map((player) => (
+                (lineLocked ? lockedLine : selectedLine).map((player) => (
                   <span className="lineChip" key={player.id}>
                     {player.name}
                   </span>
@@ -417,10 +476,12 @@ function App() {
               )}
             </div>
             <div className="validationRow">
-              {lineErrors.length === 0 ? (
-                <span className="valid">Valid line</span>
+              {lineLocked && displayedLineErrors.length === 0 ? (
+                <span className="valid">Line locked</span>
+              ) : displayedLineErrors.length === 0 ? (
+                <span className="valid">Ready to lock</span>
               ) : (
-                lineErrors.map((error) => (
+                displayedLineErrors.map((error) => (
                   <span className="warning" key={error}>
                     {error}
                   </span>
@@ -438,6 +499,7 @@ function App() {
               selectedLineIds={selectedLineIds}
               suggestedLineIds={suggestedLine}
               summaries={summaries}
+              disabled={state.gameSettings === null || lineLocked}
               canAddPlayer={(player) =>
                 canAddPlayerToLine(
                   state.players,
@@ -456,6 +518,7 @@ function App() {
               selectedLineIds={selectedLineIds}
               suggestedLineIds={suggestedLine}
               summaries={summaries}
+              disabled={state.gameSettings === null || lineLocked}
               canAddPlayer={(player) =>
                 canAddPlayerToLine(
                   state.players,
@@ -600,6 +663,7 @@ type PlayerGroupProps = {
   selectedLineIds: string[];
   suggestedLineIds: string[];
   summaries: ReturnType<typeof summarizePlayers>;
+  disabled?: boolean;
   canAddPlayer: (player: Player) => boolean;
   onToggle: (player: Player) => void;
 };
@@ -610,6 +674,7 @@ function PlayerGroup({
   selectedLineIds,
   suggestedLineIds,
   summaries,
+  disabled,
   canAddPlayer,
   onToggle,
 }: PlayerGroupProps) {
@@ -629,7 +694,7 @@ function PlayerGroup({
           const selected = selectedLineIds.includes(player.id);
           const suggested = suggestedLineIds.includes(player.id);
           const blockedByLineLimit =
-            player.active && !selected && !canAddPlayer(player);
+            !disabled && player.active && !selected && !canAddPlayer(player);
 
           return (
             <button
@@ -643,7 +708,7 @@ function PlayerGroup({
               key={player.id}
               type="button"
               onClick={() => onToggle(player)}
-              disabled={!player.active || blockedByLineLimit}
+              disabled={disabled || !player.active || blockedByLineLimit}
               title={blockedByLineLimit ? `${title} limit reached` : undefined}
             >
               <span>{player.name}</span>
