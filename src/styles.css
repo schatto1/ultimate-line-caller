@@ -303,7 +303,7 @@ select {
 
 .setupGrid {
   display: grid;
-  grid-template-columns: minmax(116px, 1fr) minmax(116px, 1fr) minmax(116px, 0.9fr);
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
   gap: 10px;
   padding: 14px;
   border-bottom: 1px solid #ebe5d7;

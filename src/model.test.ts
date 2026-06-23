@@ -28,6 +28,7 @@ const players: Player[] = [
 const settings: GameSettings = {
   startingPossession: "offense",
   startingMmpCount: 4,
+  startingFieldSide: "left",
 };
 
 function point(

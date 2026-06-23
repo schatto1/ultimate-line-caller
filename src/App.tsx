@@ -25,6 +25,7 @@ import {
 } from "./model";
 import type {
   AppState,
+  FieldSide,
   GameSettings,
   GenderCategory,
   Player,
@@ -44,6 +45,7 @@ function App() {
   const [draftSettings, setDraftSettings] = useState<GameSettings>({
     startingPossession: "offense",
     startingMmpCount: 4,
+    startingFieldSide: "left",
   });
   const [selectedLineIds, setSelectedLineIds] = useState<string[]>([]);
   const [lockedLineIds, setLockedLineIds] = useState<string[]>([]);
@@ -56,6 +58,7 @@ function App() {
     () => summarizePlayers(state.players, state.pointLog),
     [state.players, state.pointLog],
   );
+  const setupSettings = state.gameSettings ?? draftSettings;
   const game = state.gameSettings
     ? pointContext(state.gameSettings, state.pointLog)
     : null;
@@ -378,7 +381,7 @@ function App() {
             <div>
               <p className="sectionLabel">Start O/D</p>
               <Segmented
-                value={draftSettings.startingPossession}
+                value={setupSettings.startingPossession}
                 options={[
                   { label: "O", value: "offense" },
                   { label: "D", value: "defense" },
@@ -395,7 +398,7 @@ function App() {
             <div>
               <p className="sectionLabel">Point 1 Ratio</p>
               <Segmented
-                value={String(draftSettings.startingMmpCount)}
+                value={String(setupSettings.startingMmpCount)}
                 options={[
                   { label: "4M", value: "4" },
                   { label: "3M", value: "3" },
@@ -404,6 +407,23 @@ function App() {
                   setDraftSettings((current) => ({
                     ...current,
                     startingMmpCount: Number(value) as 3 | 4,
+                  }))
+                }
+                disabled={state.gameSettings !== null}
+              />
+            </div>
+            <div>
+              <p className="sectionLabel">Start Side</p>
+              <Segmented
+                value={setupSettings.startingFieldSide}
+                options={[
+                  { label: "Left", value: "left" },
+                  { label: "Right", value: "right" },
+                ]}
+                onChange={(value) =>
+                  setDraftSettings((current) => ({
+                    ...current,
+                    startingFieldSide: value as FieldSide,
                   }))
                 }
                 disabled={state.gameSettings !== null}
@@ -538,7 +558,7 @@ function App() {
               onClick={() => logPoint("us")}
               disabled={!canLogPoint}
             >
-              Us Scored
+              We Scored
             </button>
             <button
               className="scoreButton them"

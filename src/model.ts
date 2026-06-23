@@ -1,6 +1,7 @@
 export type GenderCategory = "MMP" | "FMP";
 export type Possession = "offense" | "defense";
 export type PointOutcome = "us" | "opponent";
+export type FieldSide = "left" | "right";
 
 export type Player = {
   id: string;
@@ -12,6 +13,7 @@ export type Player = {
 export type GameSettings = {
   startingPossession: Possession;
   startingMmpCount: 3 | 4;
+  startingFieldSide: FieldSide;
 };
 
 export type PointLogEntry = {
@@ -75,15 +77,33 @@ export function loadState(): AppState {
     const raw = localStorage.getItem(STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
 
-    return parsed &&
+    if (
+      parsed &&
       Array.isArray(parsed.players) &&
       Array.isArray(parsed.pointLog) &&
       "gameSettings" in parsed
-      ? parsed
-      : emptyState;
+    ) {
+      return normalizeState(parsed);
+    }
+
+    return emptyState;
   } catch {
     return emptyState;
   }
+}
+
+function normalizeState(state: AppState): AppState {
+  if (state.gameSettings === null) {
+    return state;
+  }
+
+  return {
+    ...state,
+    gameSettings: {
+      ...state.gameSettings,
+      startingFieldSide: state.gameSettings.startingFieldSide ?? "left",
+    },
+  };
 }
 
 export function saveState(state: AppState) {
