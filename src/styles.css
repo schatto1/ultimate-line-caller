@@ -578,6 +578,63 @@ select {
   font-weight: 800;
 }
 
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(23, 32, 27, 0.58);
+}
+
+.halfTimeModal {
+  display: grid;
+  gap: 16px;
+  width: min(460px, 100%);
+  padding: 20px;
+  border: 1px solid #c9c2b1;
+  border-radius: 8px;
+  color: #17201b;
+  background: #fffdf8;
+  box-shadow: 0 18px 44px rgba(23, 32, 27, 0.26);
+}
+
+.halfTimeModal h2 {
+  font-size: 1.55rem;
+}
+
+.halfTimeScore {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  min-height: 72px;
+  padding: 10px;
+  border: 1px solid #d6d2c6;
+  border-radius: 8px;
+  background: #f7f3ea;
+  font-size: 3rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.halfTimeScore span:nth-child(2) {
+  color: #72807a;
+  font-weight: 700;
+}
+
+.halfTimeDetails {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.halfTimeModal .primaryButton {
+  width: 100%;
+}
+
 @media (max-width: 1180px) {
   .workGrid {
     grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.35fr);

@@ -34,6 +34,7 @@ export type AppState = {
   gameSettings: GameSettings | null;
   pointLog: PointLogEntry[];
   manualHalfTimeTarget: number | null;
+  pendingHalfTimeCap: boolean;
 };
 
 export type PlayerSummary = {
@@ -50,6 +51,7 @@ export const emptyState: AppState = {
   gameSettings: null,
   pointLog: [],
   manualHalfTimeTarget: null,
+  pendingHalfTimeCap: false,
 };
 
 const sampleRosterData: Array<Pick<Player, "name" | "genderCategory">> = [
@@ -111,6 +113,7 @@ function normalizeState(state: AppState): AppState {
       ...state,
       gameSettings,
       manualHalfTimeTarget: state.manualHalfTimeTarget ?? null,
+      pendingHalfTimeCap: state.pendingHalfTimeCap ?? false,
     };
   }
 
@@ -125,6 +128,7 @@ function normalizeState(state: AppState): AppState {
         point.startingFieldSide ?? activeGameSettings.startingFieldSide,
     })),
     manualHalfTimeTarget: state.manualHalfTimeTarget ?? null,
+    pendingHalfTimeCap: state.pendingHalfTimeCap ?? false,
   };
 }
 
@@ -177,6 +181,16 @@ export function halfTimeTarget(
   manualHalfTimeTarget: number | null,
 ): number {
   return manualHalfTimeTarget ?? regulationHalfTimeTarget(gameSettings.targetScore);
+}
+
+export function cappedHalfTimeTargetAfterPoint(
+  gameSettings: GameSettings,
+  pointLog: PointLogEntry[],
+): number {
+  const score = scoreForPointLog(pointLog);
+  const cappedTarget = Math.max(score.us, score.opponent) + 1;
+
+  return Math.min(cappedTarget, regulationHalfTimeTarget(gameSettings.targetScore));
 }
 
 export function halfTimeStartPointNumber(

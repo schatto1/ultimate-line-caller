@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canAddPlayerToLine,
+  cappedHalfTimeTargetAfterPoint,
   fieldSideForPoint,
   lineErrors,
   newPoint,
@@ -201,6 +202,34 @@ describe("model", () => {
       halfTimeStartPointNumber: 5,
       score: { us: 3, opponent: 1 },
     });
+  });
+
+  it("sets half time cap after the capped point without exceeding regulation half", () => {
+    expect(
+      cappedHalfTimeTargetAfterPoint(settings, [
+        point(1, "us", "offense"),
+        point(2, "opponent", "defense"),
+        point(3, "us", "offense"),
+        point(4, "us", "defense"),
+        point(5, "opponent", "offense"),
+      ]),
+    ).toBe(4);
+
+    expect(
+      cappedHalfTimeTargetAfterPoint(settings, [
+        ...Array.from({ length: 8 }, (_, index) =>
+          point(index + 1, "us", index % 2 === 0 ? "offense" : "defense"),
+        ),
+      ]),
+    ).toBe(8);
+
+    expect(
+      cappedHalfTimeTargetAfterPoint(settingsTo13, [
+        ...Array.from({ length: 7 }, (_, index) =>
+          point(index + 1, "opponent", index % 2 === 0 ? "offense" : "defense"),
+        ),
+      ]),
+    ).toBe(7);
   });
 
   it("validates line size, ratio, and inactive players", () => {

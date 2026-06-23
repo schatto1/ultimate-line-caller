@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import {
   canAddPlayerToLine,
+  cappedHalfTimeTargetAfterPoint,
   clearState,
   id,
   lineErrors as getLineErrors,
@@ -52,6 +53,12 @@ function App() {
   });
   const [selectedLineIds, setSelectedLineIds] = useState<string[]>([]);
   const [lockedLineIds, setLockedLineIds] = useState<string[]>([]);
+  const [halfTimeNotice, setHalfTimeNotice] = useState<{
+    nextPointNumber: number;
+    possession: Possession;
+    fieldSide: FieldSide;
+    score: { us: number; opponent: number };
+  } | null>(null);
 
   useEffect(() => {
     saveState(state);
@@ -100,9 +107,11 @@ function App() {
     .map((id) => state.players.find((player) => player.id === id))
     .filter(Boolean) as Player[];
   const activePlayerCount = state.players.filter((player) => player.active).length;
-  const halfTimeButtonLabel = state.manualHalfTimeTarget
-    ? `Half Time @ ${state.manualHalfTimeTarget}`
-    : "Half Time Cap";
+  const halfTimeButtonLabel = state.pendingHalfTimeCap
+    ? "Cap Pending"
+    : state.manualHalfTimeTarget
+      ? `Half Time @ ${state.manualHalfTimeTarget}`
+      : "Half Time Cap";
 
   function addPlayer() {
     const name = newPlayerName.trim();
@@ -158,9 +167,11 @@ function App() {
       gameSettings: draftSettings,
       pointLog: [],
       manualHalfTimeTarget: null,
+      pendingHalfTimeCap: false,
     }));
     setSelectedLineIds([]);
     setLockedLineIds([]);
+    setHalfTimeNotice(null);
   }
 
   function resetGame() {
@@ -169,9 +180,11 @@ function App() {
       pointLog: [],
       gameSettings: null,
       manualHalfTimeTarget: null,
+      pendingHalfTimeCap: false,
     }));
     setSelectedLineIds([]);
     setLockedLineIds([]);
+    setHalfTimeNotice(null);
   }
 
   function togglePlayerForLine(player: Player) {
@@ -223,13 +236,36 @@ function App() {
       outcome,
       state.manualHalfTimeTarget,
     );
+    const nextPointLog = [...state.pointLog, point];
+    const nextHalfTimeTarget = state.pendingHalfTimeCap
+      ? cappedHalfTimeTargetAfterPoint(state.gameSettings, nextPointLog)
+      : state.manualHalfTimeTarget;
+    const nextContext = pointContext(
+      state.gameSettings,
+      nextPointLog,
+      nextHalfTimeTarget,
+    );
 
     setState((current) => ({
       ...current,
       pointLog: [...current.pointLog, point],
+      manualHalfTimeTarget: nextHalfTimeTarget,
+      pendingHalfTimeCap: false,
     }));
     setSelectedLineIds([]);
     setLockedLineIds([]);
+
+    if (
+      !game?.halfTimeReached &&
+      nextContext.halfTimeStartPointNumber === nextContext.pointNumber
+    ) {
+      setHalfTimeNotice({
+        nextPointNumber: nextContext.pointNumber,
+        possession: nextContext.possession,
+        fieldSide: nextContext.fieldSide,
+        score: nextContext.score,
+      });
+    }
   }
 
   function undoLastPoint() {
@@ -237,16 +273,22 @@ function App() {
       ...current,
       pointLog: current.pointLog.slice(0, -1),
     }));
+    setHalfTimeNotice(null);
   }
 
   function setHalfTimeCap() {
-    if (!game || game.halfTimeReached || state.manualHalfTimeTarget !== null) {
+    if (
+      !game ||
+      game.halfTimeReached ||
+      state.manualHalfTimeTarget !== null ||
+      state.pendingHalfTimeCap
+    ) {
       return;
     }
 
     setState((current) => ({
       ...current,
-      manualHalfTimeTarget: Math.max(score.us, score.opponent) + 1,
+      pendingHalfTimeCap: true,
     }));
   }
 
@@ -256,9 +298,11 @@ function App() {
       players: sampleRoster(),
       pointLog: [],
       manualHalfTimeTarget: null,
+      pendingHalfTimeCap: false,
     }));
     setSelectedLineIds([]);
     setLockedLineIds([]);
+    setHalfTimeNotice(null);
   }
 
   function resetEverything() {
@@ -268,9 +312,11 @@ function App() {
       gameSettings: null,
       pointLog: [],
       manualHalfTimeTarget: null,
+      pendingHalfTimeCap: false,
     });
     setSelectedLineIds([]);
     setLockedLineIds([]);
+    setHalfTimeNotice(null);
   }
 
   return (
@@ -503,9 +549,9 @@ function App() {
               onClick={setHalfTimeCap}
               disabled={
                 state.gameSettings === null ||
-                lineLocked ||
                 game?.halfTimeReached ||
-                state.manualHalfTimeTarget !== null
+                state.manualHalfTimeTarget !== null ||
+                state.pendingHalfTimeCap
               }
             >
               <Flag size={18} />
@@ -709,6 +755,48 @@ function App() {
           </div>
         </div>
       </section>
+
+      {halfTimeNotice ? (
+        <div className="modalBackdrop" role="presentation">
+          <div
+            className="halfTimeModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="half-time-title"
+          >
+            <div>
+              <p className="sectionLabel">Game Alert</p>
+              <h2 id="half-time-title">Half Time</h2>
+            </div>
+            <div className="halfTimeScore">
+              <span>{halfTimeNotice.score.us}</span>
+              <span>-</span>
+              <span>{halfTimeNotice.score.opponent}</span>
+            </div>
+            <div className="halfTimeDetails">
+              <StatusTile
+                label="Next Point"
+                value={`P${halfTimeNotice.nextPointNumber}`}
+              />
+              <StatusTile
+                label="O/D"
+                value={possessionLabel(halfTimeNotice.possession)}
+              />
+              <StatusTile
+                label="Side"
+                value={fieldSideLabel(halfTimeNotice.fieldSide)}
+              />
+            </div>
+            <button
+              className="primaryButton"
+              type="button"
+              onClick={() => setHalfTimeNotice(null)}
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
