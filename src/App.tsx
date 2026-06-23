@@ -63,6 +63,8 @@ function App() {
     winner: PointOutcome;
     score: { us: number; opponent: number };
   } | null>(null);
+  const [resetGameConfirmationOpen, setResetGameConfirmationOpen] =
+    useState(false);
 
   useEffect(() => {
     saveState(state);
@@ -184,6 +186,7 @@ function App() {
     setLockedLineIds([]);
     setHalfTimeNotice(null);
     setGameOverNotice(null);
+    setResetGameConfirmationOpen(false);
   }
 
   function resetGame() {
@@ -198,6 +201,7 @@ function App() {
     setLockedLineIds([]);
     setHalfTimeNotice(null);
     setGameOverNotice(null);
+    setResetGameConfirmationOpen(false);
   }
 
   function togglePlayerForLine(player: Player) {
@@ -477,7 +481,7 @@ function App() {
             <button
               className="iconButton"
               type="button"
-              onClick={resetGame}
+              onClick={() => setResetGameConfirmationOpen(true)}
               title="Reset game"
               aria-label="Reset game"
             >
@@ -857,6 +861,43 @@ function App() {
             >
               Continue
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {resetGameConfirmationOpen ? (
+        <div className="modalBackdrop" role="presentation">
+          <div
+            className="halfTimeModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-game-title"
+            aria-describedby="reset-game-message"
+          >
+            <div>
+              <p className="sectionLabel">Confirm Reset</p>
+              <h2 id="reset-game-title">Reset Game?</h2>
+            </div>
+            <p className="confirmationText" id="reset-game-message">
+              Are you sure you want to reset this game? You will lose all data
+              up to this point!
+            </p>
+            <div className="modalActions">
+              <button
+                className="secondaryButton"
+                type="button"
+                onClick={() => setResetGameConfirmationOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="primaryButton dangerButton"
+                type="button"
+                onClick={resetGame}
+              >
+                Reset Game
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

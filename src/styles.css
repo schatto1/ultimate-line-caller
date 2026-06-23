@@ -639,7 +639,28 @@ select {
   text-align: center;
 }
 
+.confirmationText {
+  color: #4f5c57;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.modalActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.dangerButton {
+  border-color: #843b35;
+  background: #843b35;
+}
+
 .halfTimeModal .primaryButton {
+  width: 100%;
+}
+
+.modalActions .secondaryButton {
   width: 100%;
 }
 
