@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Check,
+  Flag,
   ListRestart,
   Lock,
   Plus,
@@ -31,6 +32,7 @@ import type {
   Player,
   PointOutcome,
   Possession,
+  TargetScore,
 } from "./model";
 
 function classNames(...names: Array<string | false | null | undefined>) {
@@ -46,6 +48,7 @@ function App() {
     startingPossession: "offense",
     startingMmpCount: 4,
     startingFieldSide: "left",
+    targetScore: 15,
   });
   const [selectedLineIds, setSelectedLineIds] = useState<string[]>([]);
   const [lockedLineIds, setLockedLineIds] = useState<string[]>([]);
@@ -60,11 +63,16 @@ function App() {
   );
   const setupSettings = state.gameSettings ?? draftSettings;
   const game = state.gameSettings
-    ? pointContext(state.gameSettings, state.pointLog)
+    ? pointContext(
+        state.gameSettings,
+        state.pointLog,
+        state.manualHalfTimeTarget,
+      )
     : null;
   const score = game?.score ?? { us: 0, opponent: 0 };
   const pointNumber = game?.pointNumber ?? state.pointLog.length + 1;
   const currentPossession = game?.possession ?? null;
+  const currentFieldSide = game?.fieldSide ?? null;
   const requiredMmpCount = game?.requiredMmpCount ?? null;
   const requiredFmpCount = game?.requiredFmpCount ?? null;
   const currentLineMmpLimit = requiredMmpCount ?? draftSettings.startingMmpCount;
@@ -92,6 +100,9 @@ function App() {
     .map((id) => state.players.find((player) => player.id === id))
     .filter(Boolean) as Player[];
   const activePlayerCount = state.players.filter((player) => player.active).length;
+  const halfTimeButtonLabel = state.manualHalfTimeTarget
+    ? `Half Time @ ${state.manualHalfTimeTarget}`
+    : "Half Time Cap";
 
   function addPlayer() {
     const name = newPlayerName.trim();
@@ -146,6 +157,7 @@ function App() {
       ...current,
       gameSettings: draftSettings,
       pointLog: [],
+      manualHalfTimeTarget: null,
     }));
     setSelectedLineIds([]);
     setLockedLineIds([]);
@@ -156,6 +168,7 @@ function App() {
       ...current,
       pointLog: [],
       gameSettings: null,
+      manualHalfTimeTarget: null,
     }));
     setSelectedLineIds([]);
     setLockedLineIds([]);
@@ -208,6 +221,7 @@ function App() {
       state.pointLog,
       lockedLineIds,
       outcome,
+      state.manualHalfTimeTarget,
     );
 
     setState((current) => ({
@@ -225,11 +239,23 @@ function App() {
     }));
   }
 
+  function setHalfTimeCap() {
+    if (!game || game.halfTimeReached || state.manualHalfTimeTarget !== null) {
+      return;
+    }
+
+    setState((current) => ({
+      ...current,
+      manualHalfTimeTarget: Math.max(score.us, score.opponent) + 1,
+    }));
+  }
+
   function loadSampleRoster() {
     setState((current) => ({
       ...current,
       players: sampleRoster(),
       pointLog: [],
+      manualHalfTimeTarget: null,
     }));
     setSelectedLineIds([]);
     setLockedLineIds([]);
@@ -237,7 +263,12 @@ function App() {
 
   function resetEverything() {
     clearState();
-    setState({ players: [], gameSettings: null, pointLog: [] });
+    setState({
+      players: [],
+      gameSettings: null,
+      pointLog: [],
+      manualHalfTimeTarget: null,
+    });
     setSelectedLineIds([]);
     setLockedLineIds([]);
   }
@@ -260,10 +291,18 @@ function App() {
             value={currentPossession ? possessionLabel(currentPossession) : "-"}
           />
           <StatusTile
+            label="Side"
+            value={currentFieldSide ? fieldSideLabel(currentFieldSide) : "-"}
+          />
+          <StatusTile
             label="Ratio"
             value={
               requiredMmpCount ? `${requiredMmpCount}M / ${requiredFmpCount}F` : "-"
             }
+          />
+          <StatusTile
+            label="Half"
+            value={game ? `${game.half === "first" ? "1st" : "2nd"} / ${game.halfTimeTarget}` : "-"}
           />
           <StatusTile label="Active" value={String(activePlayerCount)} />
         </div>
@@ -413,6 +452,23 @@ function App() {
               />
             </div>
             <div>
+              <p className="sectionLabel">Target</p>
+              <Segmented
+                value={String(setupSettings.targetScore)}
+                options={[
+                  { label: "15", value: "15" },
+                  { label: "13", value: "13" },
+                ]}
+                onChange={(value) =>
+                  setDraftSettings((current) => ({
+                    ...current,
+                    targetScore: Number(value) as TargetScore,
+                  }))
+                }
+                disabled={state.gameSettings !== null}
+              />
+            </div>
+            <div>
               <p className="sectionLabel">Start Side</p>
               <Segmented
                 value={setupSettings.startingFieldSide}
@@ -441,6 +497,20 @@ function App() {
           </div>
 
           <div className="lineActions">
+            <button
+              className="secondaryButton"
+              type="button"
+              onClick={setHalfTimeCap}
+              disabled={
+                state.gameSettings === null ||
+                lineLocked ||
+                game?.halfTimeReached ||
+                state.manualHalfTimeTarget !== null
+              }
+            >
+              <Flag size={18} />
+              {halfTimeButtonLabel}
+            </button>
             <button
               className="secondaryButton"
               type="button"
@@ -746,6 +816,10 @@ function PlayerGroup({
 
 function possessionLabel(possession: Possession) {
   return possession === "offense" ? "O" : "D";
+}
+
+function fieldSideLabel(side: FieldSide) {
+  return side === "left" ? "Left" : "Right";
 }
 
 export default App;

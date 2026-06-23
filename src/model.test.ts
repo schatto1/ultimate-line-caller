@@ -29,6 +29,12 @@ const settings: GameSettings = {
   startingPossession: "offense",
   startingMmpCount: 4,
   startingFieldSide: "left",
+  targetScore: 15,
+};
+
+const settingsTo13: GameSettings = {
+  ...settings,
+  targetScore: 13,
 };
 
 function point(
@@ -42,6 +48,7 @@ function point(
     pointNumber,
     linePlayerIds,
     startingPossession,
+    startingFieldSide: "left",
     requiredMmpCount: requiredMmpCountForPoint(
       pointNumber,
       settings.startingMmpCount,
@@ -72,6 +79,9 @@ describe("model", () => {
       possession: "offense",
       requiredMmpCount: 4,
       requiredFmpCount: 3,
+      fieldSide: "left",
+      half: "first",
+      halfTimeTarget: 8,
       score: { us: 0, opponent: 0 },
     });
 
@@ -82,6 +92,8 @@ describe("model", () => {
       possession: "defense",
       requiredMmpCount: 3,
       requiredFmpCount: 4,
+      fieldSide: "left",
+      half: "first",
       score: { us: 1, opponent: 0 },
     });
 
@@ -108,6 +120,69 @@ describe("model", () => {
       requiredMmpCount: 4,
       requiredFmpCount: 3,
       score: { us: 2, opponent: 1 },
+    });
+  });
+
+  it("switches starting O/D and side on the first point after regulation half time", () => {
+    const pointLog = Array.from({ length: 8 }, (_, index) =>
+      point(index + 1, "us", index === 0 ? "offense" : "defense"),
+    );
+
+    expect(pointContext(settings, pointLog)).toMatchObject({
+      pointNumber: 9,
+      possession: "defense",
+      fieldSide: "right",
+      half: "second",
+      halfTimeTarget: 8,
+      halfTimeStartPointNumber: 9,
+      halfTimeReached: true,
+      score: { us: 8, opponent: 0 },
+    });
+
+    expect(
+      pointContext(settings, [
+        ...pointLog,
+        point(9, "opponent", "defense"),
+      ]),
+    ).toMatchObject({
+      pointNumber: 10,
+      possession: "offense",
+      fieldSide: "right",
+      half: "second",
+    });
+  });
+
+  it("uses seven as the regulation half time target for games to 13", () => {
+    const pointLog = Array.from({ length: 7 }, (_, index) =>
+      point(index + 1, "opponent", index === 0 ? "offense" : "defense"),
+    );
+
+    expect(pointContext(settingsTo13, pointLog)).toMatchObject({
+      pointNumber: 8,
+      possession: "defense",
+      fieldSide: "right",
+      half: "second",
+      halfTimeTarget: 7,
+      score: { us: 0, opponent: 7 },
+    });
+  });
+
+  it("uses the manual half time target when half time cap is set", () => {
+    const pointLog = [
+      point(1, "us", "offense"),
+      point(2, "opponent", "defense"),
+      point(3, "us", "offense"),
+      point(4, "us", "defense"),
+    ];
+
+    expect(pointContext(settings, pointLog, 3)).toMatchObject({
+      pointNumber: 5,
+      possession: "defense",
+      fieldSide: "right",
+      half: "second",
+      halfTimeTarget: 3,
+      halfTimeStartPointNumber: 5,
+      score: { us: 3, opponent: 1 },
     });
   });
 
@@ -207,12 +282,14 @@ describe("model", () => {
     expect(firstPoint).toMatchObject({
       pointNumber: 1,
       startingPossession: "offense",
+      startingFieldSide: "left",
       requiredMmpCount: 4,
       outcome: "us",
     });
     expect(secondPoint).toMatchObject({
       pointNumber: 2,
       startingPossession: "defense",
+      startingFieldSide: "left",
       requiredMmpCount: 3,
       outcome: "opponent",
     });

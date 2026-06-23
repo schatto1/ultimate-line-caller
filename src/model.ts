@@ -2,6 +2,7 @@ export type GenderCategory = "MMP" | "FMP";
 export type Possession = "offense" | "defense";
 export type PointOutcome = "us" | "opponent";
 export type FieldSide = "left" | "right";
+export type TargetScore = 13 | 15;
 
 export type Player = {
   id: string;
@@ -14,6 +15,7 @@ export type GameSettings = {
   startingPossession: Possession;
   startingMmpCount: 3 | 4;
   startingFieldSide: FieldSide;
+  targetScore: TargetScore;
 };
 
 export type PointLogEntry = {
@@ -21,6 +23,7 @@ export type PointLogEntry = {
   pointNumber: number;
   linePlayerIds: string[];
   startingPossession: Possession;
+  startingFieldSide: FieldSide;
   requiredMmpCount: 3 | 4;
   outcome: PointOutcome;
   createdAt: string;
@@ -30,6 +33,7 @@ export type AppState = {
   players: Player[];
   gameSettings: GameSettings | null;
   pointLog: PointLogEntry[];
+  manualHalfTimeTarget: number | null;
 };
 
 export type PlayerSummary = {
@@ -45,6 +49,7 @@ export const emptyState: AppState = {
   players: [],
   gameSettings: null,
   pointLog: [],
+  manualHalfTimeTarget: null,
 };
 
 const sampleRosterData: Array<Pick<Player, "name" | "genderCategory">> = [
@@ -93,16 +98,33 @@ export function loadState(): AppState {
 }
 
 function normalizeState(state: AppState): AppState {
+  const gameSettings = state.gameSettings
+    ? {
+        ...state.gameSettings,
+        startingFieldSide: state.gameSettings.startingFieldSide ?? "left",
+        targetScore: state.gameSettings.targetScore ?? 15,
+      }
+    : null;
+
   if (state.gameSettings === null) {
-    return state;
+    return {
+      ...state,
+      gameSettings,
+      manualHalfTimeTarget: state.manualHalfTimeTarget ?? null,
+    };
   }
+
+  const activeGameSettings = gameSettings!;
 
   return {
     ...state,
-    gameSettings: {
-      ...state.gameSettings,
-      startingFieldSide: state.gameSettings.startingFieldSide ?? "left",
-    },
+    gameSettings: activeGameSettings,
+    pointLog: state.pointLog.map((point) => ({
+      ...point,
+      startingFieldSide:
+        point.startingFieldSide ?? activeGameSettings.startingFieldSide,
+    })),
+    manualHalfTimeTarget: state.manualHalfTimeTarget ?? null,
   };
 }
 
@@ -118,6 +140,14 @@ export function oppositeMmpCount(count: 3 | 4): 3 | 4 {
   return count === 4 ? 3 : 4;
 }
 
+export function oppositePossession(possession: Possession): Possession {
+  return possession === "offense" ? "defense" : "offense";
+}
+
+export function oppositeFieldSide(side: FieldSide): FieldSide {
+  return side === "left" ? "right" : "left";
+}
+
 export function requiredMmpCountForPoint(
   pointNumber: number,
   startingMmpCount: 3 | 4,
@@ -128,12 +158,57 @@ export function requiredMmpCountForPoint(
   return usesStartingRatio ? startingMmpCount : oppositeMmpCount(startingMmpCount);
 }
 
+export function regulationHalfTimeTarget(targetScore: TargetScore): number {
+  return Math.ceil(targetScore / 2);
+}
+
+export function scoreForPointLog(pointLog: PointLogEntry[]) {
+  return pointLog.reduce(
+    (score, point) => {
+      score[point.outcome === "us" ? "us" : "opponent"] += 1;
+      return score;
+    },
+    { us: 0, opponent: 0 },
+  );
+}
+
+export function halfTimeTarget(
+  gameSettings: GameSettings,
+  manualHalfTimeTarget: number | null,
+): number {
+  return manualHalfTimeTarget ?? regulationHalfTimeTarget(gameSettings.targetScore);
+}
+
+export function halfTimeStartPointNumber(
+  pointLog: PointLogEntry[],
+  target: number,
+): number | null {
+  const score = { us: 0, opponent: 0 };
+
+  for (const [index, point] of pointLog.entries()) {
+    score[point.outcome === "us" ? "us" : "opponent"] += 1;
+
+    if (score.us >= target || score.opponent >= target) {
+      return index + 2;
+    }
+  }
+
+  return null;
+}
+
 export function pointContext(
   gameSettings: GameSettings,
   pointLog: PointLogEntry[],
+  manualHalfTimeTarget: number | null = null,
 ) {
   const pointNumber = pointLog.length + 1;
   const lastPoint = pointLog.at(-1);
+  const score = scoreForPointLog(pointLog);
+  const halfTarget = halfTimeTarget(gameSettings, manualHalfTimeTarget);
+  const halfStartPointNumber = halfTimeStartPointNumber(pointLog, halfTarget);
+  const isHalfTimeStartPoint = pointNumber === halfStartPointNumber;
+  const isSecondHalf =
+    halfStartPointNumber !== null && pointNumber >= halfStartPointNumber;
   const requiredMmpCount = requiredMmpCountForPoint(
     pointNumber,
     gameSettings.startingMmpCount,
@@ -144,17 +219,21 @@ export function pointContext(
     requiredMmpCount,
     requiredFmpCount: 7 - requiredMmpCount,
     possession: lastPoint
-      ? lastPoint.outcome === "us"
-        ? "defense"
-        : "offense"
+      ? isHalfTimeStartPoint
+        ? oppositePossession(gameSettings.startingPossession)
+        : lastPoint.outcome === "us"
+          ? "defense"
+          : "offense"
       : gameSettings.startingPossession,
-    score: pointLog.reduce(
-      (score, point) => {
-        score[point.outcome === "us" ? "us" : "opponent"] += 1;
-        return score;
-      },
-      { us: 0, opponent: 0 },
-    ),
+    fieldSide: isSecondHalf
+      ? oppositeFieldSide(gameSettings.startingFieldSide)
+      : gameSettings.startingFieldSide,
+    half: isSecondHalf ? "second" : "first",
+    halfTimeTarget: halfTarget,
+    halfTimeStartPointNumber: halfStartPointNumber,
+    halfTimeReached: halfStartPointNumber !== null,
+    manualHalfTimeTarget,
+    score,
   };
 }
 
@@ -270,14 +349,16 @@ export function newPoint(
   pointLog: PointLogEntry[],
   linePlayerIds: string[],
   outcome: PointOutcome,
+  manualHalfTimeTarget: number | null = null,
 ): PointLogEntry {
-  const context = pointContext(gameSettings, pointLog);
+  const context = pointContext(gameSettings, pointLog, manualHalfTimeTarget);
 
   return {
     id: id("point"),
     pointNumber: context.pointNumber,
     linePlayerIds: [...linePlayerIds],
     startingPossession: context.possession,
+    startingFieldSide: context.fieldSide,
     requiredMmpCount: context.requiredMmpCount,
     outcome,
     createdAt: new Date().toISOString(),
