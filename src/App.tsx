@@ -417,7 +417,7 @@ function App() {
           </div>
 
           <div className="setupGrid">
-            <div>
+            <div className="setupControl compactSetupControl">
               <p className="sectionLabel">Start O/D</p>
               <Segmented
                 value={setupSettings.startingPossession}
@@ -434,7 +434,7 @@ function App() {
                 disabled={state.gameSettings !== null}
               />
             </div>
-            <div className="ratioSetupControl">
+            <div className="setupControl ratioSetupControl">
               <p className="sectionLabel">Point 1 Ratio</p>
               <Segmented
                 value={String(setupSettings.startingMmpCount)}
@@ -451,7 +451,7 @@ function App() {
                 disabled={state.gameSettings !== null}
               />
             </div>
-            <div>
+            <div className="setupControl compactSetupControl">
               <p className="sectionLabel">Target</p>
               <Segmented
                 value={String(setupSettings.targetScore)}
@@ -468,7 +468,7 @@ function App() {
                 disabled={state.gameSettings !== null}
               />
             </div>
-            <div>
+            <div className="setupControl sideSetupControl">
               <p className="sectionLabel">Start Side</p>
               <Segmented
                 value={setupSettings.startingFieldSide}

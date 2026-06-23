@@ -303,15 +303,46 @@ select {
 }
 
 .setupGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: end;
   gap: 10px;
+  overflow-x: auto;
   padding: 14px;
   border-bottom: 1px solid #ebe5d7;
 }
 
-.ratioSetupControl .segmented {
+.setupControl {
+  flex: 1 0 112px;
+  min-width: 112px;
+}
+
+.compactSetupControl {
+  flex-grow: 0.65;
+}
+
+.ratioSetupControl {
+  flex-basis: 178px;
+  min-width: 178px;
+}
+
+.sideSetupControl {
+  flex-basis: 140px;
+  flex-grow: 0.9;
+  min-width: 140px;
+}
+
+.setupGrid > .primaryButton {
+  flex: 0 0 124px;
+  min-width: 124px;
+  white-space: nowrap;
+}
+
+.setupControl .segmented {
   width: 100%;
+}
+
+.ratioSetupControl .segmented {
   min-width: 178px;
 }
 
@@ -568,8 +599,7 @@ select {
   }
 
   .workGrid,
-  .playerGroups,
-  .setupGrid {
+  .playerGroups {
     grid-template-columns: 1fr;
   }
 
