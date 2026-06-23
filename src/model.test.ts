@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canAddPlayerToLine,
+  fieldSideForPoint,
   lineErrors,
   newPoint,
   pointContext,
@@ -73,6 +74,20 @@ describe("model", () => {
     ).toEqual([3, 4, 4, 3, 3, 4, 4, 3]);
   });
 
+  it("alternates field side by point while resetting opposite the game start at half", () => {
+    expect(
+      [1, 2, 3, 4].map((pointNumber) =>
+        fieldSideForPoint(pointNumber, "left", null),
+      ),
+    ).toEqual(["left", "right", "left", "right"]);
+
+    expect(
+      [9, 10, 11, 12].map((pointNumber) =>
+        fieldSideForPoint(pointNumber, "left", 9),
+      ),
+    ).toEqual(["right", "left", "right", "left"]);
+  });
+
   it("derives score, next possession, point number, and ratio together", () => {
     expect(pointContext(settings, [])).toMatchObject({
       pointNumber: 1,
@@ -92,7 +107,7 @@ describe("model", () => {
       possession: "defense",
       requiredMmpCount: 3,
       requiredFmpCount: 4,
-      fieldSide: "left",
+      fieldSide: "right",
       half: "first",
       score: { us: 1, opponent: 0 },
     });
@@ -106,6 +121,7 @@ describe("model", () => {
       pointNumber: 3,
       requiredMmpCount: 3,
       requiredFmpCount: 4,
+      fieldSide: "left",
       score: { us: 1, opponent: 1 },
     });
 
@@ -119,6 +135,7 @@ describe("model", () => {
       pointNumber: 4,
       requiredMmpCount: 4,
       requiredFmpCount: 3,
+      fieldSide: "right",
       score: { us: 2, opponent: 1 },
     });
   });
@@ -147,7 +164,7 @@ describe("model", () => {
     ).toMatchObject({
       pointNumber: 10,
       possession: "offense",
-      fieldSide: "right",
+      fieldSide: "left",
       half: "second",
     });
   });
@@ -289,7 +306,7 @@ describe("model", () => {
     expect(secondPoint).toMatchObject({
       pointNumber: 2,
       startingPossession: "defense",
-      startingFieldSide: "left",
+      startingFieldSide: "right",
       requiredMmpCount: 3,
       outcome: "opponent",
     });

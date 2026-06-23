@@ -196,6 +196,26 @@ export function halfTimeStartPointNumber(
   return null;
 }
 
+export function fieldSideForPoint(
+  pointNumber: number,
+  startingFieldSide: FieldSide,
+  halfTimeStartPointNumber: number | null,
+): FieldSide {
+  const halfOpeningPointNumber =
+    halfTimeStartPointNumber !== null && pointNumber >= halfTimeStartPointNumber
+      ? halfTimeStartPointNumber
+      : 1;
+  const halfOpeningFieldSide =
+    halfOpeningPointNumber === 1
+      ? startingFieldSide
+      : oppositeFieldSide(startingFieldSide);
+  const pointsSinceHalfOpened = pointNumber - halfOpeningPointNumber;
+
+  return pointsSinceHalfOpened % 2 === 0
+    ? halfOpeningFieldSide
+    : oppositeFieldSide(halfOpeningFieldSide);
+}
+
 export function pointContext(
   gameSettings: GameSettings,
   pointLog: PointLogEntry[],
@@ -225,9 +245,11 @@ export function pointContext(
           ? "defense"
           : "offense"
       : gameSettings.startingPossession,
-    fieldSide: isSecondHalf
-      ? oppositeFieldSide(gameSettings.startingFieldSide)
-      : gameSettings.startingFieldSide,
+    fieldSide: fieldSideForPoint(
+      pointNumber,
+      gameSettings.startingFieldSide,
+      halfStartPointNumber,
+    ),
     half: isSecondHalf ? "second" : "first",
     halfTimeTarget: halfTarget,
     halfTimeStartPointNumber: halfStartPointNumber,
