@@ -62,7 +62,6 @@ function App() {
   const [gameOverNotice, setGameOverNotice] = useState<{
     winner: PointOutcome;
     score: { us: number; opponent: number };
-    targetScore: TargetScore;
   } | null>(null);
 
   useEffect(() => {
@@ -273,7 +272,6 @@ function App() {
       setGameOverNotice({
         winner: nextContext.winner,
         score: nextContext.score,
-        targetScore: state.gameSettings.targetScore,
       });
       setHalfTimeNotice(null);
     } else if (
@@ -846,16 +844,11 @@ function App() {
               <span>-</span>
               <span>{gameOverNotice.score.opponent}</span>
             </div>
-            <div className="halfTimeDetails">
+            <div className="halfTimeDetails gameOverDetails">
               <StatusTile
                 label="Winner"
                 value={gameOverNotice.winner === "us" ? "Us" : "Opp"}
               />
-              <StatusTile
-                label="Target"
-                value={String(gameOverNotice.targetScore)}
-              />
-              <StatusTile label="Lines" value="Locked" />
             </div>
             <button
               className="primaryButton"

@@ -631,6 +631,14 @@ select {
   gap: 8px;
 }
 
+.gameOverDetails {
+  grid-template-columns: 1fr;
+}
+
+.gameOverDetails .statusTile {
+  text-align: center;
+}
+
 .halfTimeModal .primaryButton {
   width: 100%;
 }
