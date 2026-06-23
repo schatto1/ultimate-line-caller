@@ -232,6 +232,32 @@ describe("model", () => {
     ).toBe(7);
   });
 
+  it("marks the game over when either team reaches the target score", () => {
+    expect(
+      pointContext(settings, [
+        ...Array.from({ length: 15 }, (_, index) =>
+          point(index + 1, "us", index % 2 === 0 ? "offense" : "defense"),
+        ),
+      ]),
+    ).toMatchObject({
+      winner: "us",
+      gameOver: true,
+      score: { us: 15, opponent: 0 },
+    });
+
+    expect(
+      pointContext(settingsTo13, [
+        ...Array.from({ length: 13 }, (_, index) =>
+          point(index + 1, "opponent", index % 2 === 0 ? "offense" : "defense"),
+        ),
+      ]),
+    ).toMatchObject({
+      winner: "opponent",
+      gameOver: true,
+      score: { us: 0, opponent: 13 },
+    });
+  });
+
   it("validates line size, ratio, and inactive players", () => {
     expect(
       lineErrors(players, ["m1", "m2", "m3", "m4", "f1", "f2", "f3"], 4),

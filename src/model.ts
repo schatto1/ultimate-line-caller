@@ -176,6 +176,21 @@ export function scoreForPointLog(pointLog: PointLogEntry[]) {
   );
 }
 
+export function winnerForScore(
+  score: { us: number; opponent: number },
+  targetScore: TargetScore,
+): PointOutcome | null {
+  if (score.us >= targetScore) {
+    return "us";
+  }
+
+  if (score.opponent >= targetScore) {
+    return "opponent";
+  }
+
+  return null;
+}
+
 export function halfTimeTarget(
   gameSettings: GameSettings,
   manualHalfTimeTarget: number | null,
@@ -238,6 +253,7 @@ export function pointContext(
   const pointNumber = pointLog.length + 1;
   const lastPoint = pointLog.at(-1);
   const score = scoreForPointLog(pointLog);
+  const winner = winnerForScore(score, gameSettings.targetScore);
   const halfTarget = halfTimeTarget(gameSettings, manualHalfTimeTarget);
   const halfStartPointNumber = halfTimeStartPointNumber(pointLog, halfTarget);
   const isHalfTimeStartPoint = pointNumber === halfStartPointNumber;
@@ -269,6 +285,8 @@ export function pointContext(
     halfTimeStartPointNumber: halfStartPointNumber,
     halfTimeReached: halfStartPointNumber !== null,
     manualHalfTimeTarget,
+    winner,
+    gameOver: winner !== null,
     score,
   };
 }

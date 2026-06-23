@@ -59,6 +59,11 @@ function App() {
     fieldSide: FieldSide;
     score: { us: number; opponent: number };
   } | null>(null);
+  const [gameOverNotice, setGameOverNotice] = useState<{
+    winner: PointOutcome;
+    score: { us: number; opponent: number };
+    targetScore: TargetScore;
+  } | null>(null);
 
   useEffect(() => {
     saveState(state);
@@ -77,6 +82,7 @@ function App() {
       )
     : null;
   const score = game?.score ?? { us: 0, opponent: 0 };
+  const gameOver = game?.gameOver ?? false;
   const pointNumber = game?.pointNumber ?? state.pointLog.length + 1;
   const currentPossession = game?.possession ?? null;
   const currentFieldSide = game?.fieldSide ?? null;
@@ -93,9 +99,15 @@ function App() {
       : getLineErrors(state.players, lockedLineIds, requiredMmpCount);
   const lineLocked = lockedLineIds.length > 0;
   const canLockLine =
-    state.gameSettings !== null && !lineLocked && lineErrors.length === 0;
+    state.gameSettings !== null &&
+    !gameOver &&
+    !lineLocked &&
+    lineErrors.length === 0;
   const canLogPoint =
-    state.gameSettings !== null && lineLocked && lockedLineErrors.length === 0;
+    state.gameSettings !== null &&
+    !gameOver &&
+    lineLocked &&
+    lockedLineErrors.length === 0;
   const displayedLineErrors = lineLocked ? lockedLineErrors : lineErrors;
   const suggestedLine = requiredMmpCount
     ? getSuggestedLine(state.players, state.pointLog, requiredMmpCount)
@@ -172,6 +184,7 @@ function App() {
     setSelectedLineIds([]);
     setLockedLineIds([]);
     setHalfTimeNotice(null);
+    setGameOverNotice(null);
   }
 
   function resetGame() {
@@ -185,10 +198,11 @@ function App() {
     setSelectedLineIds([]);
     setLockedLineIds([]);
     setHalfTimeNotice(null);
+    setGameOverNotice(null);
   }
 
   function togglePlayerForLine(player: Player) {
-    if (!state.gameSettings || lineLocked || !player.active) {
+    if (!state.gameSettings || gameOver || lineLocked || !player.active) {
       return;
     }
 
@@ -255,7 +269,14 @@ function App() {
     setSelectedLineIds([]);
     setLockedLineIds([]);
 
-    if (
+    if (nextContext.gameOver && nextContext.winner) {
+      setGameOverNotice({
+        winner: nextContext.winner,
+        score: nextContext.score,
+        targetScore: state.gameSettings.targetScore,
+      });
+      setHalfTimeNotice(null);
+    } else if (
       !game?.halfTimeReached &&
       nextContext.halfTimeStartPointNumber === nextContext.pointNumber
     ) {
@@ -274,11 +295,13 @@ function App() {
       pointLog: current.pointLog.slice(0, -1),
     }));
     setHalfTimeNotice(null);
+    setGameOverNotice(null);
   }
 
   function setHalfTimeCap() {
     if (
       !game ||
+      game.gameOver ||
       game.halfTimeReached ||
       state.manualHalfTimeTarget !== null ||
       state.pendingHalfTimeCap
@@ -303,6 +326,7 @@ function App() {
     setSelectedLineIds([]);
     setLockedLineIds([]);
     setHalfTimeNotice(null);
+    setGameOverNotice(null);
   }
 
   function resetEverything() {
@@ -317,6 +341,7 @@ function App() {
     setSelectedLineIds([]);
     setLockedLineIds([]);
     setHalfTimeNotice(null);
+    setGameOverNotice(null);
   }
 
   return (
@@ -549,6 +574,7 @@ function App() {
               onClick={setHalfTimeCap}
               disabled={
                 state.gameSettings === null ||
+                gameOver ||
                 game?.halfTimeReached ||
                 state.manualHalfTimeTarget !== null ||
                 state.pendingHalfTimeCap
@@ -561,7 +587,12 @@ function App() {
               className="secondaryButton"
               type="button"
               onClick={() => setSelectedLineIds(suggestedLine)}
-              disabled={!requiredMmpCount || lineLocked || suggestedLine.length < 7}
+              disabled={
+                !requiredMmpCount ||
+                gameOver ||
+                lineLocked ||
+                suggestedLine.length < 7
+              }
             >
               <Check size={18} />
               Fill Suggested
@@ -570,7 +601,7 @@ function App() {
               className="secondaryButton"
               type="button"
               onClick={() => setSelectedLineIds([])}
-              disabled={lineLocked || selectedLineIds.length === 0}
+              disabled={gameOver || lineLocked || selectedLineIds.length === 0}
             >
               Clear Line
             </button>
@@ -635,7 +666,7 @@ function App() {
               selectedLineIds={selectedLineIds}
               suggestedLineIds={suggestedLine}
               summaries={summaries}
-              disabled={state.gameSettings === null || lineLocked}
+              disabled={state.gameSettings === null || gameOver || lineLocked}
               canAddPlayer={(player) =>
                 canAddPlayerToLine(
                   state.players,
@@ -654,7 +685,7 @@ function App() {
               selectedLineIds={selectedLineIds}
               suggestedLineIds={suggestedLine}
               summaries={summaries}
-              disabled={state.gameSettings === null || lineLocked}
+              disabled={state.gameSettings === null || gameOver || lineLocked}
               canAddPlayer={(player) =>
                 canAddPlayerToLine(
                   state.players,
@@ -791,6 +822,45 @@ function App() {
               className="primaryButton"
               type="button"
               onClick={() => setHalfTimeNotice(null)}
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {gameOverNotice ? (
+        <div className="modalBackdrop" role="presentation">
+          <div
+            className="halfTimeModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="game-over-title"
+          >
+            <div>
+              <p className="sectionLabel">Final</p>
+              <h2 id="game-over-title">Game Over</h2>
+            </div>
+            <div className="halfTimeScore">
+              <span>{gameOverNotice.score.us}</span>
+              <span>-</span>
+              <span>{gameOverNotice.score.opponent}</span>
+            </div>
+            <div className="halfTimeDetails">
+              <StatusTile
+                label="Winner"
+                value={gameOverNotice.winner === "us" ? "Us" : "Opp"}
+              />
+              <StatusTile
+                label="Target"
+                value={String(gameOverNotice.targetScore)}
+              />
+              <StatusTile label="Lines" value="Locked" />
+            </div>
+            <button
+              className="primaryButton"
+              type="button"
+              onClick={() => setGameOverNotice(null)}
             >
               Continue
             </button>
