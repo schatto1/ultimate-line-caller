@@ -434,13 +434,13 @@ function App() {
                 disabled={state.gameSettings !== null}
               />
             </div>
-            <div>
+            <div className="ratioSetupControl">
               <p className="sectionLabel">Point 1 Ratio</p>
               <Segmented
                 value={String(setupSettings.startingMmpCount)}
                 options={[
-                  { label: "4M", value: "4" },
-                  { label: "3M", value: "3" },
+                  { label: "4M / 3F", value: "4" },
+                  { label: "3M / 4F", value: "3" },
                 ]}
                 onChange={(value) =>
                   setDraftSettings((current) => ({

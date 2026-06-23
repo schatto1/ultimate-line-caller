@@ -254,6 +254,7 @@ select {
   color: #4b5954;
   background: transparent;
   font-weight: 900;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -303,10 +304,15 @@ select {
 
 .setupGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
   gap: 10px;
   padding: 14px;
   border-bottom: 1px solid #ebe5d7;
+}
+
+.ratioSetupControl .segmented {
+  width: 100%;
+  min-width: 178px;
 }
 
 .lineActions {
