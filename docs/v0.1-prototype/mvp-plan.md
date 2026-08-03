@@ -1,5 +1,8 @@
 # Ultimate Line Caller One-Game Prototype
 
+> Version 0.1 prototype note: This document describes the implementation plan for version 0.1, the original one-game development prototype. It is preserved as historical context for the 1.0 roadmap.
+
+
 ## Summary
 
 Build a touch-first React/Vite web app for iPad that validates the core sideline flow: create a roster, assign each player to one of two gender categories, select seven players for a point, log whether we or the opponent scored, and show score plus player point counts.

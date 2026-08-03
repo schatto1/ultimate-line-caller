@@ -1,5 +1,8 @@
 # Current Spreadsheet Analysis
 
+> Version 0.1 prototype note: This document supported the version 0.1 prototype by analyzing the legacy spreadsheet workflow. It is preserved as historical context for the 1.0 roadmap.
+
+
 Source sheet:
 
 ```text

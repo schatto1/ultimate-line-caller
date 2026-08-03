@@ -2,7 +2,7 @@
 
 Touch-first iPad web app idea for replacing the team's ultimate line-calling spreadsheet.
 
-## Current Build
+## Current Build: 0.1 Prototype
 
 This directory contains the first sideline prototype:
 
@@ -19,9 +19,10 @@ This directory contains the first sideline prototype:
 - `src/App.tsx`: React UI and event handlers
 - `src/model.ts`: shared types, local storage, and game rules
 - `src/model.test.ts`: core behavior tests
-- `docs/mvp-plan.md`: implementation-ready plan for the first prototype
-- `docs/architecture.md`: short note on the simplified app structure
-- `docs/spreadsheet-analysis.md`: notes from the current spreadsheet structure
+- `docs/1.0-direction-checklist.md`: living direction and checklist for the 1.0 release
+- `docs/v0.1-prototype/mvp-plan.md`: implementation-ready plan for the 0.1 prototype
+- `docs/v0.1-prototype/architecture.md`: short note on the simplified 0.1 prototype app structure
+- `docs/v0.1-prototype/spreadsheet-analysis.md`: notes from the legacy spreadsheet structure used for prototype planning
 - `reference/ultimate-lines-sheet.xlsx`: exported copy of the current Google Sheet
 - `tools/inspect-ultimate-lines-xml.py`: utility used to inspect the exported workbook
 

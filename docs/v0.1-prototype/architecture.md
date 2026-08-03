@@ -1,5 +1,8 @@
 # Architecture
 
+> Version 0.1 prototype note: This document describes the architecture for version 0.1, the original development prototype. It is preserved as historical context for the 1.0 roadmap.
+
+
 The prototype intentionally has a small source surface:
 
 - `src/App.tsx`: the React UI and event handlers
