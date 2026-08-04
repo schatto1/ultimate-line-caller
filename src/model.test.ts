@@ -3,11 +3,17 @@ import {
   canAddPlayerToLine,
   cappedHalfTimeTargetAfterPoint,
   fieldSideForPoint,
+  halfTimeStartPointNumber,
   lineErrors,
+  lineCounts,
+  linePlayers,
   newPoint,
   pointContext,
   requiredMmpCountForPoint,
+  scoreForPointLog,
+  suggestedLine,
   summaries,
+  winnerForScore,
 } from "./model";
 import type { GameSettings, Player, PointLogEntry } from "./model";
 
@@ -258,6 +264,49 @@ describe("model", () => {
     });
   });
 
+  it("does not mark the game over before either team reaches the target score", () => {
+    expect(winnerForScore({ us: 14, opponent: 13 }, 15)).toBeNull();
+    expect(winnerForScore({ us: 12, opponent: 12 }, 13)).toBeNull();
+  });
+
+  it("derives score from point outcomes", () => {
+    expect(
+      scoreForPointLog([
+        point(1, "us", "offense"),
+        point(2, "opponent", "defense"),
+        point(3, "us", "offense"),
+        point(4, "opponent", "defense"),
+        point(5, "us", "offense"),
+      ]),
+    ).toEqual({ us: 3, opponent: 2 });
+  });
+
+  it("returns the first point after the half time target is reached", () => {
+    expect(
+      halfTimeStartPointNumber(
+        [
+          point(1, "us", "offense"),
+          point(2, "opponent", "defense"),
+          point(3, "us", "offense"),
+          point(4, "opponent", "defense"),
+        ],
+        3,
+      ),
+    ).toBeNull();
+
+    expect(
+      halfTimeStartPointNumber(
+        [
+          point(1, "us", "offense"),
+          point(2, "opponent", "defense"),
+          point(3, "us", "offense"),
+          point(4, "us", "defense"),
+        ],
+        3,
+      ),
+    ).toBe(5);
+  });
+
   it("validates line size, ratio, and inactive players", () => {
     expect(
       lineErrors(players, ["m1", "m2", "m3", "m4", "f1", "f2", "f3"], 4),
@@ -272,6 +321,15 @@ describe("model", () => {
     expect(
       lineErrors(players, ["m1", "m2", "m3", "m4", "f1", "f2", "f4"], 4),
     ).toContain("F4 is inactive");
+  });
+
+  it("ignores unknown player IDs when resolving line players and counts", () => {
+    expect(linePlayers(players, ["f2", "missing", "m1"]).map(({ id }) => id))
+      .toEqual(["f2", "m1"]);
+    expect(lineCounts(players, ["f2", "missing", "m1", "m2"])).toEqual({
+      MMP: 2,
+      FMP: 1,
+    });
   });
 
   it("blocks adding players after their category limit is reached", () => {
@@ -337,6 +395,58 @@ describe("model", () => {
     });
   });
 
+  it("sorts summaries with active players before inactive players, then by lowest workload", () => {
+    const summary = summaries(players, [
+      point(1, "us", "offense", ["m1", "m2", "m3", "m4", "f1", "f2", "f3"]),
+      point(2, "us", "defense", ["m1", "m2", "m3", "m4", "f1", "f2", "f3"]),
+      point(3, "us", "offense", ["m1", "m2", "m3", "m4", "f1", "f2", "f4"]),
+    ]);
+
+    expect(summary.map(({ player }) => player.id)).toEqual([
+      "f3",
+      "f1",
+      "f2",
+      "m1",
+      "m2",
+      "m3",
+      "m4",
+      "f4",
+    ]);
+  });
+
+  it("suggests the lowest-workload active players by required ratio", () => {
+    const pointLog = [
+      point(1, "us", "offense", ["m1", "m2", "m3", "m4", "f1", "f2", "f3"]),
+      point(2, "opponent", "defense", [
+        "m1",
+        "m2",
+        "m3",
+        "f1",
+        "f2",
+        "f3",
+        "f4",
+      ]),
+    ];
+
+    expect(suggestedLine(players, pointLog, 4)).toEqual([
+      "m4",
+      "m1",
+      "m2",
+      "m3",
+      "f1",
+      "f2",
+      "f3",
+    ]);
+    expect(suggestedLine(players, pointLog, 3)).toEqual([
+      "m4",
+      "m1",
+      "m2",
+      "f1",
+      "f2",
+      "f3",
+    ]);
+  });
+
   it("creates point log entries from current game state", () => {
     const firstPoint = newPoint(
       settings,
@@ -365,5 +475,22 @@ describe("model", () => {
       requiredMmpCount: 3,
       outcome: "opponent",
     });
+  });
+
+  it("copies line IDs when creating a point log entry", () => {
+    const linePlayerIds = ["m1", "m2", "m3", "m4", "f1", "f2", "f3"];
+    const loggedPoint = newPoint(settings, [], linePlayerIds, "us");
+
+    linePlayerIds.pop();
+
+    expect(loggedPoint.linePlayerIds).toEqual([
+      "m1",
+      "m2",
+      "m3",
+      "m4",
+      "f1",
+      "f2",
+      "f3",
+    ]);
   });
 });
