@@ -39,9 +39,11 @@ installs.
 
 ## Next Build Step
 
-Install dependencies and run the app:
+Use the Node.js version declared in `.nvmrc`, then install dependencies and run
+the app:
 
 ```bash
+nvm use
 npm install
 npm run dev -- --host 0.0.0.0
 ```

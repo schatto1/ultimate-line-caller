@@ -2,3 +2,11 @@ node_modules
 dist
 .DS_Store
 *.tsbuildinfo
+
+# Local app exports/backups can contain player names, injury notes, and stats.
+exports/
+backups/
+*.backup.json
+*.backup.csv
+ultimate-line-caller-*.json
+ultimate-line-caller-*.csv
