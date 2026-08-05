@@ -10,9 +10,28 @@ Before starting feature work:
 - Read `docs/1.0-direction-checklist.md`.
 - Identify the relevant 1.0 milestone/stage.
 - Use the stage branch naming convention from the checklist.
+- Use the Node.js version pinned in `.nvmrc`; run `nvm use` before dependency
+  installs or local verification when needed.
 - Keep `main` as the latest accepted work that should build and be usable.
 - Cut production releases from tags such as `v1.0.0`, with GitHub Releases for
   release notes.
+
+## Workflow Hardening
+
+- GitHub Actions CI is intentionally deferred for now. Until CI exists, local
+  verification with `npm test` and `npm run build` is required before finishing
+  feature work.
+- Use `.github/pull_request_template.md` for PRs so every branch records the
+  relevant v1.0 stage, initial failing-test result or justified skip, final
+  verification, UI/manual QA notes, and data-safety checks.
+- Update `CHANGELOG.md` for notable product, workflow, deployment, or
+  user-facing changes.
+- Treat real roster and game data as sensitive. Do not commit real exports,
+  backups, player availability/injury notes, stats, or other private team data.
+- Implement full backup/restore immediately after the model/migration stage and
+  before roster import/export, stats work, or real tournament use. This is still
+  required while hosting/backend decisions are deferred because browser storage
+  can be evicted independently of deployment choice.
 
 ## v1.0 Feature Branch Protocol
 
