@@ -7,6 +7,17 @@ release described in `docs/1.0-direction-checklist.md`.
 
 ## Unreleased
 
+### Model And Storage
+
+- Added the v1.0 `schemaVersion: 2` app state envelope for teams, seasons,
+  tournaments, and games.
+- Added migration from the prototype `ultimate-line-caller:v1` localStorage key
+  into the new `ultimate-line-caller:v2` state.
+- Added selectors for the active team, season, tournament, game, active roster,
+  and unavailable players.
+- Changed roster deletion into player archiving so historical point summaries
+  keep archived players and their logged points.
+
 ### Workflow
 
 - Added a changelog for release-note tracking before larger v1.0 branches.
