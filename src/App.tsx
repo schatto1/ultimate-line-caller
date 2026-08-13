@@ -12,18 +12,28 @@ import {
   Users,
 } from "lucide-react";
 import {
+  addPlayerToActiveTeam,
+  archivePlayer,
   canAddPlayerToLine,
   cappedHalfTimeTargetAfterPoint,
+  clearActiveGame,
   clearState,
+  emptyState,
   id,
   lineErrors as getLineErrors,
   loadState,
   newPoint,
   pointContext,
+  replaceActiveTeamRoster,
   sampleRoster,
   saveState,
+  selectActiveGame,
+  selectActiveTeam,
+  startActiveGame,
   suggestedLine as getSuggestedLine,
   summaries as summarizePlayers,
+  updateActiveGame,
+  updatePlayerInActiveTeam,
 } from "./model";
 import type {
   AppState,
@@ -70,21 +80,29 @@ function App() {
     saveState(state);
   }, [state]);
 
+  const activeTeam = selectActiveTeam(state);
+  const activeGame = selectActiveGame(state);
+  const players = activeTeam?.players ?? [];
+  const visiblePlayers = players.filter((player) => !player.archived);
+  const gameSettings = activeGame?.settings ?? null;
+  const pointLog = activeGame?.pointLog ?? [];
+  const manualHalfTimeTarget = activeGame?.manualHalfTimeTarget ?? null;
+  const pendingHalfTimeCap = activeGame?.pendingHalfTimeCap ?? false;
   const summaries = useMemo(
-    () => summarizePlayers(state.players, state.pointLog),
-    [state.players, state.pointLog],
+    () => summarizePlayers(players, pointLog),
+    [players, pointLog],
   );
-  const setupSettings = state.gameSettings ?? draftSettings;
-  const game = state.gameSettings
+  const setupSettings = gameSettings ?? draftSettings;
+  const game = gameSettings
     ? pointContext(
-        state.gameSettings,
-        state.pointLog,
-        state.manualHalfTimeTarget,
+        gameSettings,
+        pointLog,
+        manualHalfTimeTarget,
       )
     : null;
   const score = game?.score ?? { us: 0, opponent: 0 };
   const gameOver = game?.gameOver ?? false;
-  const pointNumber = game?.pointNumber ?? state.pointLog.length + 1;
+  const pointNumber = game?.pointNumber ?? pointLog.length + 1;
   const currentPossession = game?.possession ?? null;
   const currentFieldSide = game?.fieldSide ?? null;
   const requiredMmpCount = game?.requiredMmpCount ?? null;
@@ -93,37 +111,37 @@ function App() {
   const lineErrors =
     requiredMmpCount === null
       ? ["Start game"]
-      : getLineErrors(state.players, selectedLineIds, requiredMmpCount);
+      : getLineErrors(players, selectedLineIds, requiredMmpCount);
   const lockedLineErrors =
     requiredMmpCount === null
       ? ["Start game"]
-      : getLineErrors(state.players, lockedLineIds, requiredMmpCount);
+      : getLineErrors(players, lockedLineIds, requiredMmpCount);
   const lineLocked = lockedLineIds.length > 0;
   const canLockLine =
-    state.gameSettings !== null &&
+    gameSettings !== null &&
     !gameOver &&
     !lineLocked &&
     lineErrors.length === 0;
   const canLogPoint =
-    state.gameSettings !== null &&
+    gameSettings !== null &&
     !gameOver &&
     lineLocked &&
     lockedLineErrors.length === 0;
   const displayedLineErrors = lineLocked ? lockedLineErrors : lineErrors;
   const suggestedLine = requiredMmpCount
-    ? getSuggestedLine(state.players, state.pointLog, requiredMmpCount)
+    ? getSuggestedLine(players, pointLog, requiredMmpCount)
     : [];
   const selectedLine = selectedLineIds
-    .map((id) => state.players.find((player) => player.id === id))
+    .map((id) => players.find((player) => player.id === id))
     .filter(Boolean) as Player[];
   const lockedLine = lockedLineIds
-    .map((id) => state.players.find((player) => player.id === id))
+    .map((id) => players.find((player) => player.id === id))
     .filter(Boolean) as Player[];
-  const activePlayerCount = state.players.filter((player) => player.active).length;
-  const halfTimeButtonLabel = state.pendingHalfTimeCap
+  const activePlayerCount = visiblePlayers.filter((player) => player.active).length;
+  const halfTimeButtonLabel = pendingHalfTimeCap
     ? "Cap Pending"
-    : state.manualHalfTimeTarget
-      ? `Half Time @ ${state.manualHalfTimeTarget}`
+    : manualHalfTimeTarget
+      ? `Half Time @ ${manualHalfTimeTarget}`
       : "Half Time Cap";
 
   function addPlayer() {
@@ -133,55 +151,34 @@ function App() {
       return;
     }
 
-    setState((current) => ({
-      ...current,
-      players: [
-        ...current.players,
-        {
-          id: id("player"),
-          name,
-          genderCategory: newPlayerCategory,
-          active: true,
-        },
-      ],
-    }));
+    setState((current) =>
+      addPlayerToActiveTeam(current, {
+        id: id("player"),
+        name,
+        genderCategory: newPlayerCategory,
+        active: true,
+        archived: false,
+      }),
+    );
     setNewPlayerName("");
   }
 
-  function updatePlayer(id: string, patch: Partial<Player>) {
-    setState((current) => ({
-      ...current,
-      players: current.players.map((player) =>
-        player.id === id ? { ...player, ...patch } : player,
-      ),
-    }));
+  function updatePlayer(playerId: string, patch: Partial<Player>) {
+    setState((current) => updatePlayerInActiveTeam(current, playerId, patch));
   }
 
-  function deletePlayer(id: string) {
-    setSelectedLineIds((current) => current.filter((playerId) => playerId !== id));
-    setLockedLineIds((current) => current.filter((playerId) => playerId !== id));
-    setState((current) => ({
-      ...current,
-      players: current.players.filter((player) => player.id !== id),
-      pointLog: current.pointLog.map((point) => ({
-        ...point,
-        linePlayerIds: point.linePlayerIds.filter((playerId) => playerId !== id),
-      })),
-    }));
+  function archiveRosterPlayer(playerId: string) {
+    setSelectedLineIds((current) => current.filter((id) => id !== playerId));
+    setLockedLineIds((current) => current.filter((id) => id !== playerId));
+    setState((current) => archivePlayer(current, playerId));
   }
 
   function startGame() {
-    if (state.gameSettings !== null) {
+    if (gameSettings !== null) {
       return;
     }
 
-    setState((current) => ({
-      ...current,
-      gameSettings: draftSettings,
-      pointLog: [],
-      manualHalfTimeTarget: null,
-      pendingHalfTimeCap: false,
-    }));
+    setState((current) => startActiveGame(current, draftSettings));
     setSelectedLineIds([]);
     setLockedLineIds([]);
     setHalfTimeNotice(null);
@@ -190,13 +187,7 @@ function App() {
   }
 
   function resetGame() {
-    setState((current) => ({
-      ...current,
-      pointLog: [],
-      gameSettings: null,
-      manualHalfTimeTarget: null,
-      pendingHalfTimeCap: false,
-    }));
+    setState((current) => clearActiveGame(current));
     setSelectedLineIds([]);
     setLockedLineIds([]);
     setHalfTimeNotice(null);
@@ -205,7 +196,7 @@ function App() {
   }
 
   function togglePlayerForLine(player: Player) {
-    if (!state.gameSettings || gameOver || lineLocked || !player.active) {
+    if (!gameSettings || gameOver || lineLocked || !player.active || player.archived) {
       return;
     }
 
@@ -216,7 +207,7 @@ function App() {
 
       if (
         !canAddPlayerToLine(
-          state.players,
+          players,
           current,
           player,
           currentLineMmpLimit,
@@ -242,33 +233,35 @@ function App() {
   }
 
   function logPoint(outcome: PointOutcome) {
-    if (!state.gameSettings || !canLogPoint) {
+    if (!gameSettings || !canLogPoint) {
       return;
     }
 
     const point = newPoint(
-      state.gameSettings,
-      state.pointLog,
+      gameSettings,
+      pointLog,
       lockedLineIds,
       outcome,
-      state.manualHalfTimeTarget,
+      manualHalfTimeTarget,
     );
-    const nextPointLog = [...state.pointLog, point];
-    const nextHalfTimeTarget = state.pendingHalfTimeCap
-      ? cappedHalfTimeTargetAfterPoint(state.gameSettings, nextPointLog)
-      : state.manualHalfTimeTarget;
+    const nextPointLog = [...pointLog, point];
+    const nextHalfTimeTarget = pendingHalfTimeCap
+      ? cappedHalfTimeTargetAfterPoint(gameSettings, nextPointLog)
+      : manualHalfTimeTarget;
     const nextContext = pointContext(
-      state.gameSettings,
+      gameSettings,
       nextPointLog,
       nextHalfTimeTarget,
     );
 
-    setState((current) => ({
-      ...current,
-      pointLog: [...current.pointLog, point],
-      manualHalfTimeTarget: nextHalfTimeTarget,
-      pendingHalfTimeCap: false,
-    }));
+    setState((current) =>
+      updateActiveGame(current, (game) => ({
+        ...game,
+        pointLog: [...game.pointLog, point],
+        manualHalfTimeTarget: nextHalfTimeTarget,
+        pendingHalfTimeCap: false,
+      })),
+    );
     setSelectedLineIds([]);
     setLockedLineIds([]);
 
@@ -292,10 +285,12 @@ function App() {
   }
 
   function undoLastPoint() {
-    setState((current) => ({
-      ...current,
-      pointLog: current.pointLog.slice(0, -1),
-    }));
+    setState((current) =>
+      updateActiveGame(current, (game) => ({
+        ...game,
+        pointLog: game.pointLog.slice(0, -1),
+      })),
+    );
     setHalfTimeNotice(null);
     setGameOverNotice(null);
   }
@@ -305,26 +300,32 @@ function App() {
       !game ||
       game.gameOver ||
       game.halfTimeReached ||
-      state.manualHalfTimeTarget !== null ||
-      state.pendingHalfTimeCap
+      manualHalfTimeTarget !== null ||
+      pendingHalfTimeCap
     ) {
       return;
     }
 
-    setState((current) => ({
-      ...current,
-      pendingHalfTimeCap: true,
-    }));
+    setState((current) =>
+      updateActiveGame(current, (game) => ({
+        ...game,
+        pendingHalfTimeCap: true,
+      })),
+    );
   }
 
   function loadSampleRoster() {
-    setState((current) => ({
-      ...current,
-      players: sampleRoster(),
-      pointLog: [],
-      manualHalfTimeTarget: null,
-      pendingHalfTimeCap: false,
-    }));
+    setState((current) =>
+      updateActiveGame(
+        replaceActiveTeamRoster(current, sampleRoster()),
+        (game) => ({
+          ...game,
+          pointLog: [],
+          manualHalfTimeTarget: null,
+          pendingHalfTimeCap: false,
+        }),
+      ),
+    );
     setSelectedLineIds([]);
     setLockedLineIds([]);
     setHalfTimeNotice(null);
@@ -333,13 +334,7 @@ function App() {
 
   function resetEverything() {
     clearState();
-    setState({
-      players: [],
-      gameSettings: null,
-      pointLog: [],
-      manualHalfTimeTarget: null,
-      pendingHalfTimeCap: false,
-    });
+    setState(emptyState);
     setSelectedLineIds([]);
     setLockedLineIds([]);
     setHalfTimeNotice(null);
@@ -386,7 +381,7 @@ function App() {
           <div className="panelHeader">
             <div>
               <h1>Ultimate Line Caller</h1>
-              <p>{state.players.length} rostered</p>
+              <p>{visiblePlayers.length} rostered</p>
             </div>
             <button
               className="iconButton"
@@ -427,7 +422,7 @@ function App() {
           </form>
 
           <div className="rosterList">
-            {state.players.map((player) => (
+            {visiblePlayers.map((player) => (
               <div className="rosterRow" key={player.id}>
                 <input
                   value={player.name}
@@ -461,9 +456,9 @@ function App() {
                 <button
                   className="iconButton danger"
                   type="button"
-                  onClick={() => deletePlayer(player.id)}
-                  title="Delete player"
-                  aria-label={`Delete ${player.name}`}
+                  onClick={() => archiveRosterPlayer(player.id)}
+                  title="Archive player"
+                  aria-label={`Archive ${player.name}`}
                 >
                   <Trash2 size={18} />
                 </button>
@@ -476,7 +471,7 @@ function App() {
           <div className="panelHeader">
             <div>
               <h2>Game</h2>
-              <p>{state.pointLog.length} logged</p>
+              <p>{pointLog.length} logged</p>
             </div>
             <button
               className="iconButton"
@@ -504,7 +499,7 @@ function App() {
                     startingPossession: value as Possession,
                   }))
                 }
-                disabled={state.gameSettings !== null}
+                disabled={gameSettings !== null}
               />
             </div>
             <div className="setupControl ratioSetupControl">
@@ -521,7 +516,7 @@ function App() {
                     startingMmpCount: Number(value) as 3 | 4,
                   }))
                 }
-                disabled={state.gameSettings !== null}
+                disabled={gameSettings !== null}
               />
             </div>
             <div className="setupControl compactSetupControl">
@@ -538,7 +533,7 @@ function App() {
                     targetScore: Number(value) as TargetScore,
                   }))
                 }
-                disabled={state.gameSettings !== null}
+                disabled={gameSettings !== null}
               />
             </div>
             <div className="setupControl sideSetupControl">
@@ -555,14 +550,14 @@ function App() {
                     startingFieldSide: value as FieldSide,
                   }))
                 }
-                disabled={state.gameSettings !== null}
+                disabled={gameSettings !== null}
               />
             </div>
             <button
               className="primaryButton"
               type="button"
               onClick={startGame}
-              disabled={state.gameSettings !== null}
+              disabled={gameSettings !== null}
             >
               <Save size={18} />
               Start Game
@@ -575,11 +570,11 @@ function App() {
               type="button"
               onClick={setHalfTimeCap}
               disabled={
-                state.gameSettings === null ||
+                gameSettings === null ||
                 gameOver ||
                 game?.halfTimeReached ||
-                state.manualHalfTimeTarget !== null ||
-                state.pendingHalfTimeCap
+                manualHalfTimeTarget !== null ||
+                pendingHalfTimeCap
               }
             >
               <Flag size={18} />
@@ -662,16 +657,16 @@ function App() {
           <div className="playerGroups">
             <PlayerGroup
               title="MMP"
-              players={state.players.filter(
+              players={visiblePlayers.filter(
                 (player) => player.genderCategory === "MMP",
               )}
               selectedLineIds={selectedLineIds}
               suggestedLineIds={suggestedLine}
               summaries={summaries}
-              disabled={state.gameSettings === null || gameOver || lineLocked}
+              disabled={gameSettings === null || gameOver || lineLocked}
               canAddPlayer={(player) =>
                 canAddPlayerToLine(
-                  state.players,
+                  players,
                   selectedLineIds,
                   player,
                   currentLineMmpLimit,
@@ -681,16 +676,16 @@ function App() {
             />
             <PlayerGroup
               title="FMP"
-              players={state.players.filter(
+              players={visiblePlayers.filter(
                 (player) => player.genderCategory === "FMP",
               )}
               selectedLineIds={selectedLineIds}
               suggestedLineIds={suggestedLine}
               summaries={summaries}
-              disabled={state.gameSettings === null || gameOver || lineLocked}
+              disabled={gameSettings === null || gameOver || lineLocked}
               canAddPlayer={(player) =>
                 canAddPlayerToLine(
-                  state.players,
+                  players,
                   selectedLineIds,
                   player,
                   currentLineMmpLimit,
@@ -721,7 +716,7 @@ function App() {
               className="iconButton"
               type="button"
               onClick={undoLastPoint}
-              disabled={state.pointLog.length === 0}
+              disabled={pointLog.length === 0}
               title="Undo last point"
               aria-label="Undo last point"
             >
@@ -770,10 +765,10 @@ function App() {
 
           <div className="pointLog">
             <p className="sectionLabel">Point Log</p>
-            {state.pointLog.length === 0 ? (
+            {pointLog.length === 0 ? (
               <p className="emptyState">No points logged</p>
             ) : (
-              state.pointLog
+              pointLog
                 .slice()
                 .reverse()
                 .map((point) => (

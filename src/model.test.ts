@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  archivePlayer,
   canAddPlayerToLine,
   cappedHalfTimeTargetAfterPoint,
   fieldSideForPoint,
@@ -11,11 +12,17 @@ import {
   pointContext,
   requiredMmpCountForPoint,
   scoreForPointLog,
+  selectActiveGame,
+  selectActiveRosterPlayers,
+  selectActiveSeason,
+  selectActiveTeam,
+  selectActiveTournament,
+  selectUnavailablePlayers,
   suggestedLine,
   summaries,
   winnerForScore,
 } from "./model";
-import type { GameSettings, Player, PointLogEntry } from "./model";
+import type { AppState, GameSettings, Player, PointLogEntry } from "./model";
 
 const players: Player[] = [
   ...["m1", "m2", "m3", "m4"].map((id) => ({
@@ -23,14 +30,22 @@ const players: Player[] = [
     name: id.toUpperCase(),
     genderCategory: "MMP" as const,
     active: true,
+    archived: false,
   })),
   ...["f1", "f2", "f3"].map((id) => ({
     id,
     name: id.toUpperCase(),
     genderCategory: "FMP" as const,
     active: true,
+    archived: false,
   })),
-  { id: "f4", name: "F4", genderCategory: "FMP", active: false },
+  {
+    id: "f4",
+    name: "F4",
+    genderCategory: "FMP",
+    active: false,
+    archived: false,
+  },
 ];
 
 const settings: GameSettings = {
@@ -342,6 +357,7 @@ describe("model", () => {
       name: "F5",
       genderCategory: "FMP",
       active: true,
+      archived: false,
     };
 
     expect(
@@ -492,5 +508,151 @@ describe("model", () => {
       "f2",
       "f3",
     ]);
+  });
+
+  it("selects the active team, season, tournament, game, roster, and unavailable players", () => {
+    const appState: AppState = {
+      schemaVersion: 2,
+      activeTeamId: "team-1",
+      activeSeasonId: "season-1",
+      activeTournamentId: "tournament-1",
+      activeGameId: "game-1",
+      teams: [
+        {
+          id: "team-1",
+          name: "Team One",
+          players: [
+            {
+              id: "p1",
+              name: "Player One",
+              genderCategory: "MMP",
+              active: true,
+              archived: false,
+            },
+            {
+              id: "p2",
+              name: "Player Two",
+              genderCategory: "FMP",
+              active: false,
+              archived: false,
+            },
+            {
+              id: "p3",
+              name: "Player Three",
+              genderCategory: "FMP",
+              active: true,
+              archived: true,
+            },
+          ],
+          seasons: [
+            {
+              id: "season-1",
+              name: "2026 Season",
+              teamId: "team-1",
+              seasonRosterPlayerIds: ["p1", "p2", "p3"],
+              tournaments: [
+                {
+                  id: "tournament-1",
+                  name: "Opening Weekend",
+                  seasonId: "season-1",
+                  activeRosterPlayerIds: ["p1", "p2", "p3"],
+                  unavailablePlayerIds: ["p2"],
+                  availabilityEvents: [],
+                  games: [
+                    {
+                      id: "game-1",
+                      tournamentId: "tournament-1",
+                      name: "Game 1",
+                      settings,
+                      pointLog: [],
+                      manualHalfTimeTarget: null,
+                      pendingHalfTimeCap: false,
+                      finalized: false,
+                      createdAt: "2026-06-17T00:00:00.000Z",
+                    },
+                  ],
+                },
+              ],
+              createdAt: "2026-06-17T00:00:00.000Z",
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(selectActiveTeam(appState)?.id).toBe("team-1");
+    expect(selectActiveSeason(appState)?.id).toBe("season-1");
+    expect(selectActiveTournament(appState)?.id).toBe("tournament-1");
+    expect(selectActiveGame(appState)?.id).toBe("game-1");
+    expect(selectActiveRosterPlayers(appState).map((player) => player.id))
+      .toEqual(["p1", "p2"]);
+    expect(selectUnavailablePlayers(appState).map((player) => player.id))
+      .toEqual(["p2"]);
+  });
+
+  it("archives players without removing them from historical summaries", () => {
+    const appState: AppState = {
+      schemaVersion: 2,
+      activeTeamId: "team-1",
+      activeSeasonId: "season-1",
+      activeTournamentId: "tournament-1",
+      activeGameId: "game-1",
+      teams: [
+        {
+          id: "team-1",
+          name: "Team One",
+          players: players.slice(0, 2),
+          seasons: [
+            {
+              id: "season-1",
+              name: "2026 Season",
+              teamId: "team-1",
+              seasonRosterPlayerIds: ["m1", "m2"],
+              tournaments: [
+                {
+                  id: "tournament-1",
+                  name: "Opening Weekend",
+                  seasonId: "season-1",
+                  activeRosterPlayerIds: ["m1", "m2"],
+                  unavailablePlayerIds: [],
+                  availabilityEvents: [],
+                  games: [
+                    {
+                      id: "game-1",
+                      tournamentId: "tournament-1",
+                      name: "Game 1",
+                      settings,
+                      pointLog: [point(1, "us", "offense", ["m1", "m2"])],
+                      manualHalfTimeTarget: null,
+                      pendingHalfTimeCap: false,
+                      finalized: false,
+                      createdAt: "2026-06-17T00:00:00.000Z",
+                    },
+                  ],
+                },
+              ],
+              createdAt: "2026-06-17T00:00:00.000Z",
+            },
+          ],
+        },
+      ],
+    };
+
+    const nextState = archivePlayer(appState, "m1");
+    const archived = selectActiveTeam(nextState)?.players.find(
+      (player) => player.id === "m1",
+    );
+
+    expect(archived).toMatchObject({ archived: true, active: false });
+    expect(selectActiveTournament(nextState)?.activeRosterPlayerIds)
+      .toEqual(["m2"]);
+    expect(
+      summaries(selectActiveTeam(nextState)!.players, selectActiveGame(nextState)!.pointLog)
+        .find(({ player }) => player.id === "m1"),
+    ).toMatchObject({
+      total: 1,
+      offense: 1,
+      defense: 0,
+    });
   });
 });
