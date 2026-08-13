@@ -24,6 +24,9 @@ release described in `docs/1.0-direction-checklist.md`.
 - Added a pull request checklist for v1.0 roadmap context, test-first notes,
   final verification, UI/manual QA, and data-safety checks.
 - Pinned the local Node.js version with `.nvmrc`.
+- Added branch-routing guidance so unrelated roadmap, documentation, and
+  workflow changes land on `main` or on the relevant feature branch instead of
+  the currently checked-out branch by accident.
 
 ### Deferred
 
@@ -31,6 +34,8 @@ release described in `docs/1.0-direction-checklist.md`.
 - Static hosting selection is intentionally deferred for now; the current
   direction remains an HTTPS-hosted PWA with no backend for the first field-ready
   release.
+- Added post-1.0 roadmap items for iPad field-performance budgeting, resource
+  profiling, battery use, and thermal behavior.
 
 ## 0.1.0 - Prototype
 

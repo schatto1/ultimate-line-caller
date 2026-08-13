@@ -10,6 +10,10 @@ Before starting feature work:
 - Read `docs/1.0-direction-checklist.md`.
 - Identify the relevant 1.0 milestone/stage.
 - Use the stage branch naming convention from the checklist.
+- Before editing, confirm the current branch matches the requested change. If a
+  change is unrelated to the current feature branch, apply it on `main` for
+  general roadmap/docs/workflow updates or switch to the relevant feature branch
+  for that milestone before making edits.
 - Use the Node.js version pinned in `.nvmrc`; run `nvm use` before dependency
   installs or local verification when needed.
 - Keep `main` as the latest accepted work that should build and be usable.
